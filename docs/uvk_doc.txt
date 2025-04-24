@@ -1,0 +1,753 @@
+ *****************************************
+ *       THE ULTIMATE VIRUS KILLER       *
+ *****************************************
+
+ Version 1.23 Preview (26/12/91)
+
+ ----- Plan de la documentation ------------------------------------------
+ 1  Introduction
+    1.1  Notion de virus
+    1.2  Fonctionnement d'un virus
+ 2  Le programme
+    2.1  Tests mémoire
+         2.1.1   Vecteurs particuliers
+         2.1.2   Vecteurs d'interruptions
+         2.1.3   Vecteurs de l'Execbase.library
+         2.1.4   Vecteurs de l'Intuition.library
+         2.1.5   Vecteurs de la Dos.library
+         2.1.6   Vecteurs résidents
+         2.1.7   Virus connus
+         2.1.8   Programmes résidents
+         2.1.9   Structure interruptions d'Execbase
+         2.1.10  Dernière et fatale attaque contre le virus
+    2.2  Reconnaissance des lecteurs externes
+ 3  Le menu principal
+    3.1  Check Boot
+    3.2  Check Link
+    3.3  Display
+    3.4  Copy
+    3.5  Move
+    3.6  Create
+    3.7  Analyse
+    3.8  Checksum
+ 4  Rappels des touches
+ 5  Idées futures
+ 6  Histoire et remerciements
+    6.1  Petite histoire
+    6.2  Remerciements
+    6.3  Updates
+ 7  UVK l'instruction CLI
+ 8  But d'UVK
+    8.1  Requête
+    8.2  Contactez moi
+    8.3  Faites votre UVK
+ 9  Trucs et astuces
+ -------------------------------------------------------------------------
+
+
+   I -   INTRODUCTION
+         ~~~~~~~~~~~~
+   1.1   Notion de virus
+
+   Le 'Ultimate Virus Killer' est un tueur de virus. Mais d'abord, qu'est
+   ce qu'un VIRUS ?
+
+   Un virus informatique est tout simplement un programme, souvent écrit
+   en assembleur. Ce programme possède la particularité de pouvoir se
+   reproduire à l'insu de l'utilisateur, d'où la similitude avec son cousin
+   biologique et d'où son nom.
+   Ils infectent tous les disquettes dans un but précis. Certains se
+   contentent d'afficher un message humoristique, ou de changer le pointeur
+   de la souris. Mais le virus devient nuisible quand il efface des données.
+
+   1.2   Fonctionnement d'un virus sur l'amiga.
+
+   Puisque les virus sont des programmes, il doivent donc s'exécuter, et
+   doivent le faire discrètement. Actuellement deux moyens sont utilisés sur
+   l'amiga.
+   Le bootblock est un endroit de la disquette réservé de 1024 octets où se
+   trouve un programme. Il s'exécute dès que la disquette est introduite
+   dans le lecteur, au moment du reset. Celui-ci sert habituellement à
+   désactiver l'extension mémoire, ou au chargement rapide des jeux. C'est
+   donc un endroit idéal pour y placer un virus.
+   La deuxième facon de s'activer est de s'accrocher à un programme. Comme
+   la 'startup-sequence' est appelée à chaque chargement, les programmes
+   qui y sont exécutés sont des cibles de choix. Ces virus s'appellent les
+   'link-virus' ('link' signifie 's'accrocher').
+   Plus récemment, une nouvelle sorte de virus utilise le fichier système
+   'Disk-Validator'.
+
+   Une des possibilités que possède l'amiga est de rendre des programmes
+   RESIDENTS, c'est à dire de leur permettre de survivre au reset.
+   Les virus exploitent aussi cet avantage.
+
+   Voici donc l'organigramme schématique d'un virus sur amiga :
+
+       1. Recopie en mémoire.
+       2. Rend résident.
+       3. Infecte d'autres disquettes.
+       4. Agit sur l'écran, les disquettes ...
+       5. Prochain reset -> 2
+
+
+   II - LE PROGRAMME
+        ------------
+
+   UVK se veut le plus fiable possible, c'est pour cela que le programme
+   procède à de nombreux tests avant d'afficher son menu principal.
+
+
+   2.1   Tests mémoire
+         ~~~~~~~~~~~~~
+
+   Remarque à propos des tests mémoire:
+
+   UVK affiche les vecteurs qui ne pointent pas en ROM alors qui le font
+   habituellement. Mais certains de ces vecteurs peuvent être également
+   utilisés si par exemple un disk dur est connecté au système.
+   Il ne faut donc pas croire qu'un virus a infecté la mémoire dès que l'un de
+   ces vecteurs est affiché, car considéré comme 'détourné'.
+   Mais ces tests permettent tout de même une surveillance beaucoup plus
+   fiable.
+   Si par exemple un vecteur est détourné vers la même adresse ou presque
+   qu'un des vecteurs résidents, il y a fort à parier qu'un virus est derrière
+   tout ceci.
+   Il vaut mieux être trop prudent que pas assez...
+
+   2.1.1 Vecteurs particuliers
+
+   * BeginIO
+
+   Begin IO est une fonction de la structure Device d'Exec. Cette fonction
+   est appellée par le système lors de chaque insertion d'une disquette par
+   la routine DoIO du système. (-456(execbase)).
+   Il était donc important de rétablir le vecteur de cette fonction qui
+   peut également être utilisé par un virus. L'adresse, si elle est anormale,
+   est affichée.
+
+   * CloseIO
+
+   Close IO est une autre fonction de la structure Device d'Exec. Elle est
+   aussi détournée par certains virus. Cette adresse est également rétablie,
+   et affichée si elle ne pointe pas vers la ROM.
+
+   * Raster interrupt
+
+   Ce vecteur dont l'amiga se sert plusieurs fois par seconde, est de plus en
+   plus utilisé par les virus. Cette adresse est donc restaurée au démarrage
+   d'UVK. S'il est détourné par un virus, UVK affiche l'adresse suspecte.
+
+   2.1.2 Vecteurs d'interruptions
+
+   Certains virus détournent des vecteurs d'interruptions. Une interruption
+   est une routine système exécutée plusieurs fois par seconde (50 fois pour
+   l'interruption de niveau 3). Cela leur permet par exemple de s'installer
+   constamment en mémoire.
+   Si l'on ne rétablit pas une interruption ainsi utilisée, les vecteurs
+   réinitialisés au démarrage d'UVK, seront à nouveau détournés par le virus
+   et celui-ci sera toujours actif en mémoire.
+   UVK détecte les interruptions détournées, affiche l'adresse ou s'exécutait
+   la routine clandestine puis rétablit le vecteur d'interruption normal.
+   UVK peut alors poursuivre son nettoyage de la mémoire.
+
+   2.1.3 Vecteurs de la librarie Execbase.
+
+   Certains virus interceptent ces vecteurs pour s'exécuter : le Byte
+   Warrior intercepte DoIO pour s'inscrire sur le bloc amorce (BootBlock)
+   lorsqu'on insère une disquette.
+
+   UVK teste donc les 105 vecteurs d'Execbase (de -6 a -630) et affiche
+   les vecteurs détournés. La moindre anomalie est donc détectée, et l'uti-
+   lisateur curieux pourra jeter un oeil à l'adresse indiquée.
+
+   Cette faille du système qu'exploitent les virus est aussi un avantage.
+   En effet c'est ce qui permet aux versions 1.2 et 1.3 d'être compatibles.
+   L'inconvénient c'est que, vous l'aurez compris les vecteurs en question
+   sont différents suivant la version du Kickstart !
+   Puisqu'il faut les rétablir pour paralyser (en partie) les virus en
+   mémoire, il faut qu'UVK reconnaisse le Kickstart pour remettre les
+   vecteurs qui conviennent.
+
+   2.1.4 Vecteurs de l'Intuition.library
+
+   Certains virus comme le Revenge of the lamer détourne la fonction
+   OpenWindow() de l'intuition.library. UVK teste chacun de ses vecteurs et
+   affiche les valeurs ne pointant pas en ROM.
+
+   2.1.5 Vecteurs de la Dos.library
+
+   Le Xeno virus détourne certains de ses vecteurs, il fallait donc également
+   surveiller cette librarie. Les valeurs ne pointant pas en ROM sont là aussi
+   affichées.
+
+   2.1.6 Vecteurs résidents
+
+   Pour qu'un virus soit 'efficace' il faut qu'il soit 'résident' c'est
+   à dire qu'il résiste au reset. Contrairement à ce que l'on pourrait
+   croire le contenu de la mémoire n'est pas effacé au reset et il suffit
+   de pouvoir exécuter le virus pour le rendre 'résident'.
+   Cela est rendu possible avec les vecteurs ... résidents (CoolCapture et
+   KickTagPtr).
+   UVK exploite ce point commun aux virus : il teste relativement à ces
+   vecteurs (fiable à 100%) un bout de programme du virus et affiche le
+   nom de celui-ci. Ainsi même un virus dont le texte aura été modifié sera
+   reconnu en tant que forme mutante de son 'original'.
+
+   UVK rétablit les vecteurs donc les vecteurs résidents.
+
+   Pour que les futurs virus ou ceux que je ne possède pas (envoyez les !)
+   ne passent pas inapercus, UVK affiche les vecteurs résidents lorsqu'ils
+   sont utilisés par un virus ou par un protector inconnus à UVK. Vous
+   savez donc à quelle adresse regarder pour identifier le responsable.
+
+   2.1.7 Virus connus
+
+   UVK reconnait et neutralise en mémoire les virus suivants :
+
+   SCA (BS1/LSD/AEK/ICE/DAG), Byte Bandit 1-3, Byte Warrior (=DASA), Gadaffi,
+   Pentagon Circle, Lamer Exterminator 1-8, Disk-Doktors, Northstar, GxTeam,
+   Northstar2, Revenge 1.2, HCS 4220 1-2, VKill V1.0, Obelisk, Hilly, Kauki,
+   TimeBomb, Turk, Claas Abraham, BGS9, IRQ, Termigator, Noname (Incognito),
+   Superboy, Opapa, Revenge of the lamer, Coder, Joshua 1-2, NewBeat, Xeno,
+   Disaster, Extreme, Blackflash, Ultrafox, Terrosrists, Revenge Bootloader,
+   Microsystems, Disk Herpes, Scarface, 16BitCrew, Gremlins, CCCP, Warhawk,
+   Revenge of the lamer1 et 2, BGS9, Terrosrists, Disaster Master2.0, Opapa,
+   Butonic 1.31 et 3.00, Return of the Lamer, IRQ, Saddam Hussein,
+   Cancer Smily, Eugenie et Bret Hawnes.
+   (8 lamers exterminators, 2 Joshua, 2 HCS et 3 Byte bandit différents).
+
+   2.1.8 Programmes résidents connus
+
+   Il ne faut cependant pas oublier que tous les programmes résidents ne sont
+   pas des virus : Il existe même des antivirus qui résistent au reset
+   (le 'PvL Antivirus' de Peter van Leuven et le Guardian de Leonardo Fei).
+
+   Il était donc maladroit de les effacer en mémoire...
+
+   UVK connait les 'protectors' suivants et demande si on doit les effacer ou
+   non (UVK aime la cohabitation) :
+
+   - PvL Antivirus 3.0, 4.0, 5.0, 5.1, 5.3, 5.4, 6.1 et 6.4, Guardian 1.1
+   et Guardian 1.2, Pseudo-Ops vk 1.6, 2.0 et 2.1, Protector III,
+   Virus Control 1.3.
+
+   De plus UVK reconnait les programmes résidents suivants :
+
+   - Romcrack 0.4, Romcrack 0.7, CoderBoard 4.0, ZKick 2.30.
+
+   Comme vous pouvez le remarquer, UVK teste les virus avant les protectors,
+   pour éviter qu'un virus se camoufle en un protector ...
+
+   2.1.9 Structure Interrupt d'Execbase.
+
+   Dernière étape du diagnostic mémoire, UVK teste tous les vecteurs de la
+   'Structure Interruption' de Execbase et affiche les vecteurs détournés.
+
+   2.1.10 Dernière et fatale attaque contre le virus.
+
+   Dans certains cas les virus sont encore actifs (avec une interruption
+   par exemple) dans ce cas UVK modifie le virus et le rend inoffensif.
+
+   Après tout cela vous êtes sur qu'en chargeant UVK les virus connus qui
+   sont en mémoire seront désactivés.
+
+
+   2.2   Reconnaissance des lecteurs externes.
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   Puisque un ami ronchonnait de ne pas pouvoir tester ses disquettes dans
+   ses drives externes et que j'en ai acheté un il n'y a pas longtemps,
+   UVK reconnait les drives externes et active le mode 'EXTERNAL DRIVES'
+   (lecteurs externes).
+   On peut choisir le lecteur SOURCE (lecture) et le lecteur DESTINATION
+   (écriture) en pressant respectivement les touches 'S' et 'D'.
+
+
+   III - LE MENU PRINCIPAL
+         ~~~~~~~~~~~~~~~~~
+
+   Voici ses différentes fonctions:
+
+   3.1   CHECK BOOT (Vérifie)
+         ~~~~~~~~~~~~~~~~~~~~
+   Teste la disquette SOURCE contre les 55 virus (& mutants) suivants:
+
+   SCA (LSD/AEK/DAG/BS1/ICE), Byte Bandit 1-3 (FORPIB), Byte Warrior (DASA),
+   Pentagon Circle, Lamer Exterminator 1-8, Disk Doktors, Northstar, Coder,
+   Northstar2, Gadaffi, Revenge 1.2, HCS 4220 1-2, Obelisk, Timebomb, Kauki,
+   Joshua 1-2, Vkill V1.0, Gxteam, Claas Abraham, Termigator, Noname, Target,
+   Hilly, Turk, Opapa, NewBeat, Extreme, SuperBoy, Blackflash, Warhawk,
+   Opapa, Revenge Bootloader, Microsystems, Disk Herpes, Scarface, 16BitCrew,
+   Gremlins, CCCP.
+   (8 lamers, 3 Byte bandit, 2 Joshua et 2 HCS différents).
+
+   (J'appelle 'mutant' un virus dont seulement le texte a été modifié)
+   Dans le cas du Target System, UVK indique le nom de la disquette visée.
+
+   Reconnait les 87 bootblocks suivants:
+
+   Bootgirl, CCSBoot 2.0/3.0, XCopy 2.0, ASS Protector 1.0, AVirex, Ripper,
+   VDC 1.3/1.6/1.7/2.0, TIP Memory Controller 1.2/1.3, TKT Boot Writer,
+   Tritech, PvL Antivirus 3.0/4.0/5.0/5.1/5.3/5.4/6.1/6.4/6.5 & SoundBoot,
+   Random Access, VCC NoFastMem, SuperFly Checker, Thor Antivirus,
+   GX.Team NoFastMem, BootLeg 2.1, Destructor, TIP NoFastMem, Virus Slayer,
+   Invisible Brain Bootcopy + 73 seconds Bootcopy, Dimarz Observer, Mia Disk,
+   Dietmar virus detector, Sinister Syndicate, Mega killer, Mega-boot 1.30,
+   Pal Window System, PvL SoundBoot, ECSPal, Deluxe Boot Writer, 'Color Boot',
+   Utility Boot 2.0/5.0/6.1, 'Copper VAmiga', Virus Detector, No Exp. Memory,
+   Blizzard protector, Virus Terminator V1.0, Shining8 Util-Boot1,
+   Zerovirus AutoAddRam/NoFastMem/BigScreenTest, 'Stars&Blue Copper',
+   Virus Alert 2.01, SCA Protector, Ripper, Generation, Peter Stuer Antivirus,
+   SemTex3.3, Virusscope boots (7), Supply Team, BootTune, Outlaws Checker,
+   Starfire Checher, Quartex NoDrives, Clonk!, Sabaudian, CopyBootIII,
+   VCC Access forbidden, Filter Boot 1.01, VCS 3.2,
+   + Boots système : Kickstart, Normal DOS, Not installed.
+
+   3.2   CHECK LINK
+         ~~~~~~~~~~
+
+   Ce menu permet de lutter contre une autre forme de virus : les virus
+   fichiers. Certains remplacent le fichier cible après l'avoir recopié,
+   d'autres s'y colle (link en anglais), et enfin la forme la plus récente
+   se loge dans le Disk-Validator.
+
+   Les deux premières formes sont liées à un fichier directement exécutable,
+   donc sont activés de cette façon. Pour la troisième, c'est un peu plus
+   subtil.
+
+   UVK connait les 16 virus fichiers suivants :
+
+   - Vrai link (qui se collent aux fichiers):
+     IRQ, CCCP, Eugenie, Cancer Smily, Xeno.
+   - Disk-validator :
+     Return of the lamer, Saddam Hussein.
+   - Autres (Utilise la Startup, ou détourne un de ses fichiers) :
+     Revenge of the Lamer1 et 2, BGS9, Terrosrists, Disaster Master,
+     Butonic 1.31 et 3.00, Bret Hawnes, Timebomb.
+
+   3.2.1 Les virus 'link'
+
+   Ce sont les seuls virus capable d'infecter les fichiers ou la
+   Startup-Sequence du disque dur. Toutefois aucun d'entre eux ne s'attaque
+   aux disques durs...
+
+
+   + Recherche par fichier
+
+     Certains de ces virus choisissent leurs victimes au hasard dans le
+     secteurs racine de la disquette. UVK permet donc de tester n'importe
+     quel fichier que l'on choisira grâce au requester.
+
+   + Recherche par la Startup-Sequence
+
+     D'autre choisissent leurs cibles parmi les commandes de la Startup.
+     UVK charge et balaye ce fichier texte à la recherche de fichiers
+     exécutables qu'il testera. Tous les fichiers de la Startup sont testés,
+     même si les virus ne s'attaquent qu'aux premiers de la liste, car il est
+     courant que ce fichier soit modifié. 
+
+   + Recherche par répertoires
+
+     Pour une question d'ergonomie, il est possible de tester tout un
+     répertoire en un seul coup.
+
+   3.2.2 Les virus 'disk-validator'
+
+   Il faut d'abord savoir que le Disk-Validator est aussi un fichier
+   exécutable, mais qui lui n'est utilisé que dans certains cas : par exemple
+   lorsque le flag 'bitmap' du secteur racine de la disquette insérée est
+   inversé. Ainsi le Disk-Validator revalidera la disquette.
+
+   Deux virus utilisent cette propriété du Disk-Validator : Le Return of the
+   Lamer et son clone le Saddam Hussein virus.
+   Sur chaque disquette infectée le flag bitmap est donc artificiellement
+   inversé pour activer le virus. Il faudra donc en plus de neutraliser le
+   virus en mémoire et de l'effacer sur la disquette, rétablir ce flag bitmap
+   à une valeur correcte.
+
+   Il suffit simplement d'indiquer à UVK le nom du volume à tester (lecteur
+   de disquette ou disque dur). Attention ce genre de virus, jusqu'à présent
+   ne modifie pas le flag 'bitmap' du disque dur, donc le virus si il infecte
+   le Disk Validator du disque, ne s'exécutera pas.
+
+   Remarque:
+   Lorsque le système ne peut valider la disquette à cause de l'inversion
+   du flag 'Bitmap', il interdit toute écriture de fichier DOS.
+   Ainsi même après qu'UVK ait rétablit le flag, le système croit toujours
+   que la disquette n'est pas validable.
+   Il faut réinsérer la disquette pour que le systéme la revalide.
+
+
+   3.3   DISPLAY (Affiche)
+         ~~~~~~~~~~~~~~~~~
+   Affiche le BootBlock de la disquette SOURCE en ASCII (caractères
+   entre $20 et $7f).
+   On peut maintenant imprimer en ASCII le bootblock en appuyant sur 'P'.
+   Les fichiers nécessaires à l'imprimante doivent se trouver sur la disquette
+   (Printer.device, Parallel.device, Driver ...).
+
+   Si aucune disquette n'est présente dans le lecteur 'source', UVK demande
+   une adresse mémoire. Il affiche 1 Ko de cet endroit de la mémoire en
+   ASCII.
+
+   3.4   COPY (Copie)
+         ~~~~~~~~~~~~
+   Copie le BootBlock de la disquette SOURCE à la disquette DESTINATION.
+
+   3.5   MOVE (Transfert)
+         ~~~~~~~~~~~~~~~~
+   Copie le BootBlock de la disquette SOURCE sur la disquette spécifiée
+   sous la forme d'un fichier de 1024 octets.
+   L'opération inverse est également possible.
+   Cette fonction permet l'étude et l'archivage des BootBlocks.
+
+   3.6   BOOTBLOCK C. KIT
+         ~~~~~~~~~~~~~~~~
+   Il existait plusieurs bootblocks pour éteindre les lecteurs externes, pour
+   désactiver la fast-ram, mais jamais il n'était possible de combiner
+   plusieurs fonctions. Il est maintenant possible de créer un bootblock avec
+   différentes fonctions sélectionnables à loisir.
+
+   Liste des fonctions disponibles:
+
+   - Normal DOS
+
+   Si vous ne sélectionnez aucune fonction.
+
+   - Ram Cleaner V2.0
+
+   Vide la mémoire des virus.
+   Un écran rouge signifie que les vecteurs résidents ont été utilisés ou que
+   un ou plusieurs vecteurs d'Execbase a été modifié, un écran vert que la
+   mémoire est saine.
+
+   - NoFastMem.
+
+   Désactive la mémoire Fast pour les programmes qui n'ont pas été conçus pour
+   fonctionner avec celle ci.
+
+   - NoDrive.
+
+   Désactive les lecteurs externes et libère la mémoire correspondante.
+   C'est utile lorsque son lecteur ne possède pas d'interrupteur marche/arrêt.
+
+   - Test Pal
+
+   Il arrive parfois que l'Amiga s'allume avec un écran NTSC (200 lignes au
+   lieu de 256), cette fonction provoque alors un reset.
+
+   - Make Pal
+
+   Force la fenêtre du CLI à s'ouvrir en 256 lignes. On peut également choisir
+   le nom de sa fenêtre CLI. Si vous taper <Return> sans entrer de nom, le
+   titre sera par défaut, 'AmigaDOS'. Evite de mettre la commande 256 dans la
+   Startup-Sequence.
+
+   - NoLed
+
+   Eteint ou diminue l'intensité de la led du power et dans la majorité des
+   cas désactive le filtre passe bas qui atténue progressivement les
+   fréquences audio entre 4 Khz et 7 Khz (4 Khz = Début atténuation,
+   7 Khz = Saturation). Sauf sur les A1000 et les tout premiers A500.
+   Pratique pour les disquettes de musiques...
+
+   - Irq Protector
+
+   Fait croire au virus Irq qu'il est déjà actif en mémoire : Votre Amiga
+   est donc immunisé contre ce virus (jusqu'au prochain reset).
+
+
+   3.7   ANALYSE
+         ~~~~~~~
+
+   S'active en pressant la touche 'A'.
+   UVK ne peut pas connaitre tous les bootblocks, donc tous les virus.
+   Cette fonction analyse un bootblock inconnu et précise son rôle, donc
+   permet de détecter un virus inconnu.
+   Elle indique si le BootBlock modifie ou efface des points stratégiques de
+   la mémoire (vecteurs résidents : ColdCapture, CoolCapture, KickTagPtr),
+   s'il utilise des fonctions IO, indique lequelles, et donne des informations
+   sur la fonction utilisée.
+
+   Cet analyseur n'est pas totalement fiable (95%). Mais il faut savoir
+   qu'en faire un sûr à 100% est équivalent à programmer un debugger !
+
+   Comment interpréter les informations fournies par l'analyseur:
+
+   Comme vous le savez, la plupart des virus utilisent les vecteurs
+   résidents. Un Bootblock qui les utilise devient donc suspect.
+
+   Les virus se reproduisent de disquette en disquette en utilisant le
+   Trackdisk.Device. Celui ci permet de lire une disquette, d'y écrire, de
+   la formatter, d'arrêter le moteur du lecteur etc..
+
+   Par exemple pour s'écrire sur une disquette, le virus devra fournir
+   plusieurs informations au Trackdisk.Device :
+    1 - La longueur de données qu'il souhaite écrire (Length)
+    2 - L'endroit sur la disquette ou il veut écrire (Offset)
+    3 - L'endroit ou se trouve le virus en mémoire (Buffer)
+   Ces trois informations vous sont fournies par l'analyseur lorsque c'est
+   possible, c'est à dire suivant le mode d'adressage (Immédiat ou Absolu).
+   Le bootblock, l'endroit ou s'écrivent la plupart des virus possède un
+   'Offset' nul. La longueur de ce bootblock est de 1024 octets, soit
+   $400 en hexadécimal (base 16).
+
+   Exemple 1:
+   Si UVK vous indique qu'un bootblock
+   - détourne un/des vecteurs en mémoire,
+   - qu'il écrit (Write) 1024 bytes (Length=$400) sur le Bootblock (Offset=0),
+   vous êtes pratiquement sûr qu'il s'agit d'un virus.
+   Votre devoir doit être alors de l'archiver avec la commande MOVE
+   (option 'Bootblock to file')et de m'envoyer ce nouveau virus. Merci.
+
+   Exemple 2:
+   Par contre lorsque UVK indique : l'utilisation d'une commande lecture
+   (Read), que l'Offset n'est pas nul, et que la longueur des données lues
+   n'est pas 1024 bytes (Lenght>$400), il s'agit sûrement d'un loader, donc
+   il ne faut surtout pas effacer ce bootblock.
+
+   Enfin, UVK 'raisonne' en fonction des informations précédentes pour
+   déterminer si le bootblock étudié est :
+   - un virus (2 niveaux de probabilité : 'sûrement' et 'peut être')
+   - un loader
+   et s'il est crypté ('sûrement' ou 'peut être').
+   si l'analyseur ne détecte rien de suspect pour un bootblock important,
+   et crypté, c'est que celui-ci a quelque-chose à cacher. Ce bootblock
+   est donc peut être un virus.
+
+   3.8   Calcul de la somme de contrôle du Bootblock
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   Charge le bootblock Source, recalcule la Checksum, puis réécrit le
+   bootblock.
+   On peut grâce à cette fonction programmer ces propres bootblocks.
+   S'utilise en pressant la touche 'C'.
+
+
+   UVK est programmé de telle facon qu'il se compacte bien (jusqu'à 55%) :
+   les données et textes sont regroupés à la fin du code source.
+
+
+   IV -  RAPPEL DES TOUCHES
+         ------------------
+
+    (A)nalyse     : Analyser.
+    (C)hecksum    : Recalcule la somme de contrôle du BootBlock.
+    (D)estination : Choix de lecteur 'Destination'.
+    (G)reetings   : Remerciements.
+    (I)nfos       : About UVK...
+    (K)eys        : Cette page.
+    (P)rint       : imprime le bootblock (dans la fonction Display)
+    (R)am         : Test de la mémoire.
+    (S)ource      : Choix de lecteur 'Source'.
+    Au(T)oCheck   : Teste la disquette dès son insertion dans le lecteur.
+    (Q)uit        : Reset.
+
+   V -   UVK, l'instruction CLI
+         ----------------------
+
+   UVK accepte des paramètres CLI:
+
+   ?|h|H : Liste de ces options
+   D|d   : Date de cette version d'UVK
+   P|p   : Virus hunter intégré (test mémoire d'UVK)
+   C|c   : Check. Teste les vecteurs sans les restaurer. (pour l'étude des
+           virus).
+
+
+   VI -   IDEES FUTURES
+         -------------
+
+   - Choisir Francais, Anglais ou Allemand au démarrage.
+   - UVK en tâche de fond qui réapparait lorsqu'un virus est détecté (comme
+     VIRUSX).
+   - Bip Virus soft.
+   - Test à 100% pour les link-virus (surprise).
+   - Tester si une disquette a été attaquée par un lamer exterminator 2
+     (sale bête).
+
+
+   VII -  HISTOIRE ET REMERCIEMENTS
+         -------------------------
+
+   7.1   Petite histoire
+         ~~~~~~~~~~~~~~~
+   Un jour (02/89) un ami m'a apporté une compilation d'antivirus. Il
+   n'existait aucun antivirus RAM+DISK pour plus de 3 virus différents
+   (VirusX n'y était pas). Il m'a dit : "Ce serais bien de faire un antivirus
+   pour tous les virus, un 'Ultimate Virus Killer'".
+
+   7.2   Remerciements
+         ~~~~~~~~~~~~~
+   + Merci également à lui pour le Blackstar, Northstar et gadaffi virus et
+     pour ces diverses aides.
+   + Merci à un autre ami pour le Disk-Doktors, le Noname et également pour
+     son aide.
+   + Merci à Mr Cupertino pour le Disk-Doktors et l'IRQ virus.
+   + Merci à celui qui m'a envoyé le HCS, Revenge, GxTeam, Claas Abraham,
+     LSD, Revenge of lamer et Termigator, Coder, Hilly, Newbeat, Disaster,
+     Opapa, Extreme, Superboy, Terrorist, XenoI, Revenge of the lamer,
+     Return of the lamer, Bret Hawnes et Joshua1.
+   + Merci à ceux qui m'ont envoyé le Saddam Hussein, Butonic 1.31,
+     Butonic 3.00, Eugenie, CCCP, Cancer Smily.
+
+   7.3   Updates
+         ~~~~~~~
+   + UVK 1.10 (??????)
+
+     Première version qui fonctionne.
+
+   + UVK 1.12 (24/05/89 15h)
+
+     'Q' = reset.
+     Reconnaissance du 2nd drive.
+
+   + UVK 1.14 (26/05/89 21h)
+
+     Version débuggée de UVK 1.12
+
+   + UVK 1.15 (09/06/89 0h)
+
+     Connait les virus suivants : BLACKSTAR, NORTHSTAR, GADAFFI.
+     Connait le Z Protector 3.0.
+
+   + UVK 1.16 (06/07/89 1h)
+
+     Permet de recalculer la somme de contrôle d'un BootBlock.
+     Pressez la touche 'C'.
+
+   + UVK 1.17 (14/07/89 0h) (Ca fait 200 ans!)
+
+     Optimisation.
+     Le Forpib virus est un Byte Bandit dont le texte a été changé.
+     UVK 1.16 testait le texte dans les virus (Pas Fiable).
+     UVK 1.17 teste maintenant le code dans les virus (RAM+DISK).
+     La routine de capture du nom de fichier dans 'Move' est debuggée.
+     Cleaner 1.1 connait tous les virus d'UVK.
+     Nodrive déconnecte les drives externes.
+     UVK connait les masjuscules.
+     'K' pour connaitre les nouvelles touches.
+     Je crois UVK maintenant entièrement debuggé.
+
+   + UVK 1.18 (16/02/90 17h)
+
+     Optimisation suite.
+     UVK connait le Revenge 1.2 virus, le HCS 4220, 3 nouveaux Lamer
+     Exterminator, le LSD et le AEK (mutants du SCA) (RAM+DISK).
+     Il arrive très souvent que l'on obtienne le message 'Nothing Suspect'
+     avec la fonction CHECK.
+     Une cruelle question se pose alors :
+     - Ai-je à faire à un virus inconnu ou à un bootblock spécial ?
+     Car DISPLAY n'apporte pas toujours une réponse...
+     UVK 1.18 reconnait donc 25 bootblocks spéciaux.
+     UVK installe un nouveau IRQ Protector qui empêche l'IRQ virus de
+     s'activer (jusqu'au prochain reset).
+     UVK reconnait la FAT LADY (!).
+
+   + UVK 1.19 (20/04/90)
+
+     Optimisation 3e épisode.
+     UVK possède une fonction 'Analyse' (preview) de bootblock.
+     UVK comprend aussi un diagnostic mémoire complet : Il teste les
+     endroits susceptibles d'être attaqués par un virus ...
+     Il est IMPOSSIBLE après cela qu'un virus passe inapercu !
+     Dans le cas ou quelque chose d'anormal est détecté, UVK affiche les
+     vecteurs détournés : Les initiés pourront deviner ce que fait le
+     nouveau virus ...
+     UVK connait les VKill V1.0, Obelisk, Timebomb et BGS9 (RAM)
+     virus + 5 nouveaux pgms résidents.
+
+   + UVK 1.20 (27/05/90)
+
+     Forte amélioration de la fonction Analyse.
+     Le diagnostique mémoire est encore plus impitoyable.
+     De nouveaux virus sont reconnus et tués en mémoire et sur disquette:
+     les GxTeam, Claas Abraham, Termigator virus.
+     Le Revenge of the lamer est reconnu et tué en mémoire.
+     De nouveaux boots et de nouveaux programmes résidents sont également
+     reconnus.
+
+   + UVK 1.21 (03/11/90 3h!)
+
+     Optimisation.
+     Les bootblock ne sont plus des 'data'. Ils font partie du code d'UVK,
+     sont optimisés et plus facilement modifiables.
+     UVK fonctionne sous Workbench et n'est plus fâché avec le kickstart 1.3.
+     Et :
+     De nouveaux virus et bootblocks, un protector intégré , un Bootblock
+     Construction kit, une touche pour imprimer le bootblock en ASCII, une
+     fonction Move entièrement réécrite ...
+
+   + UVK 1.22
+
+     (27/12/90)  Preview pour un meeting de fin d'année.
+     (25/08/91)  Preview2 pour un deuxième meeting.
+
+     Optimisation des routines de restoration de vecteurs.
+     Compatibilité avec le système 2.0 (Si UVK ne reconnait pas le Kickstart,
+     il considère comme étant sur système 2.0, avec une ROM de 512k à 
+     l'adresse $200000, mais ne restorera pas les vecteurs détournés).
+     Arp library ajoutée.
+     Test des link virus, sur disquette et en mémoire. 
+     Display ram.
+     Commande CLI 'Check'.
+
+   + UVK 1.23
+
+     (26/12/91) Preview pour un meeting de fin d'annee.
+
+     Pas de changement ou presque depuis la 1.22 preview2, si ce n'est
+     qu'UVK tue le Saddam Hussein, et bien 8 lamers.
+
+
+   Caractéristiques techniques de cette version:
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   Code : 12176 octets, Data+Texte : 21104 octets.
+   Source : 82458 Octets pour 4088 lignes d'assembleur.
+
+
+   VIII - BUT D'UVK
+         ---------
+
+   8.1   Requêtes
+         ~~~~~~~~
+   UVK doit mériter son nom et tuer le plus de virus possibles.
+   Pour cela envoyez moi les nouveaux virus et vous aurez une update.
+
+   Je passe de longues heures devant mon écran pour chasser les virus, aussi
+   je vous demande une aide du type 'Shareware' de l'ordre de 30FF (5$). Les
+   personnes qui me supporteront ainsi pour chaque update seront tenues au
+   courant de l'évolution du programme, et recevront la documentation ainsi
+   que le docfile 'VirusInfo' qui décrit les caractéristiques des virus connus
+   d'UVK.
+   Merci de votre compréhension.
+
+   8.2   Contactez moi
+         ~~~~~~~~~~~~~
+   Pour de nouveaux virus, des bugs qui subsistent, des idées géniales ...
+   Vous pouvez m'écrire,
+
+    Clévy Laurent, 2 rue du pré Feray, 27180 Arnières/Iton, France.
+
+   ou me contacter par minitel (par réseau MinitelNet pour l'étranger) :
+    3614 RTEL1 ou RTEL2, ou 3615 RTEL en BAL AMIGUY.
+
+
+   8.3   Faites votre UVK
+         ~~~~~~~~~~~~~~~~
+   Je compte sur vous pour avoir des idées (intéressantes) d'updates.
+
+
+   IX - TRUCS ET ASTUCES
+         ----------------
+
+   - Certains jeux utilisent le BootBlock pour un chargement rapide.
+     Si un virus s'installe sur ce genre de disquette le jeux ne démarre
+     plus...
+     Mais si vous avez archivé le BootBlock avec UVK, vous êtes sauvé
+     il ne reste plus qu'à le réinstaller sur la disquette infectée !
+     UVK mon sauveur ! (voix féminine).
+   - Un ami utilise le NoLed BootBlock comme moyen visuel :
+     Si la led ne s'éteint plus sur une disquette traitée, c'est qu'elle est
+     infectée par un virus. Simple mais bonne idée non ?
+
+
+                                                   AMIGUY le 26/12/91

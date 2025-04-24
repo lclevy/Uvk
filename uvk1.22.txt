@@ -1,0 +1,3773 @@
+;----------- UVK 1.22 -----------
+;06/03/91 By Amiguy
+
+>extern"l/disk-validator",diskvalid
+
+;	lea	param,a0
+;	moveq	#2,d0
+	move.l	d0,LenPara
+	move.l	a0,Para
+
+Main:	clr.b	AllRight
+	bsr.L	WbStart
+	move.l	4.w,a6
+	lea	Dosname,a1
+	moveq	#0,d0
+	jsr	-552(a6)
+	move.l	d0,Dosbase
+	beq.L	EndK
+
+	move.l	4.w,a6
+	move.l	-406(a6),IrqOpenLib
+	move.l	Dosbase,a6		;tst Xeno virus
+	move.l	-28(a6),a0
+	cmp.l	#$b47c03ee,(a0)
+	bne.s	NoXeno
+	move.l	-148(a6),a0
+	cmp.l	#$3ed,12(a0)
+	bne.s	NoXeno
+	move.l	-82(a6),a0
+	cmp.l	#$3ed,10(a0)
+	bne.s	NoXeno
+	move.b	#1,XenoF
+	lea	XenAdr,a4
+	sub.l	#$34a,a0
+	move.l	a0,XenoAdr
+	move.l	$2de(a0),a1
+	move.w	#$70ff,-30(a6)		;restore Open
+	lea	-30(a6),a2
+	bsr.L	KillXen
+	move.w	#$70ed,-150(a6)		;restore LoadSeg
+	lea	-150(a6),a2
+	bsr.L	KillXen
+	move.w	#$70f5,-84(a6)		;restore Lock
+	lea	-84(a6),a2
+	bsr.L	KillXen
+NoXeno:	cmp.l	#2,LenPara
+	blo.L	Uvk1
+	bgt	EndK2
+	move.l	Para,a0
+	move.b	(a0),d0
+	cmp.b	#"d",d0
+	beq.s	OkParD
+	cmp.b	#"D",d0
+	beq.s	OkParD
+	cmp.b	#"?",d0
+	beq.s	OkParI
+	cmp.b	#"H",d0
+	beq.s	OkParI
+	cmp.b	#"h",d0
+	beq.s	OkParI
+	cmp.b	#"p",d0
+	beq.L	CmdProt
+	cmp.b	#"P",d0
+	beq.L	CmdProt
+	bra.L	EndK2
+OkParD:	move.l	#Date,d2	
+	bsr.L	Ecrire3
+	bra.L	EndK2
+OkParI:	move.l	#CmdInf,d2
+	bsr.L	Ecrire3
+	bra.L	EndK2
+CmdProt:move.l	#UvkVHu,d2
+	bsr.L	ecrire3
+	move.b	#1,PCmd
+	move.l	Dosbase,a6
+	jsr	-60(a6)
+	move.l	d0,ConHandle
+	bra.L	MemTst
+
+Uvk1:	move.l	4.w,a6
+	lea	Name,a0
+Chip:	move.l	4.w,a6
+	move.l	20(a6),d0
+	cmp.l	#$002100c0,d0
+	bne.s	PasK2
+	move.l	#"K1.2",38(a0)
+	bra.s	ContUvk
+PasK2:	cmp.l	#$00220002,d0
+	bne.L	EndK2
+	move.l	#"K1.3",38(A0)	
+	bra.s	ContUvk
+
+ContUvk:move.l	4.w,a6
+	moveq	#0,d0
+	lea	DriveC,a2
+	lea	DiskRes,a1
+	jsr	-498(a6)
+	move.l	d0,a6
+
+	move.b	#-1,FlagDr
+	moveq	#0,d2
+SeaConD:move.l	d2,d0
+	jsr	-30(a6)
+	tst.l	d0
+	bne.s	NotCon
+	add.b	#1,FlagDr
+	move.b	#1,0(a2,d2)
+NotCon:	addq	#1,d2
+	cmp.l	#4,d2
+	bne.s	SeaConD	;flagDr=0 : 1 Dr
+
+	tst.b	FlagDr
+	beq.L	PasSupD
+	move.b	#3,Drs
+	move.b	#0,Drd
+
+	lea	Drs,a0
+	bsr.L	NextDr
+	lea	Drd,a0
+	bsr.L	NextDr
+
+	lea	DrTxt,a0
+	move.b	Drs,d0
+	add.b	#$30,d0
+	move.b	Drd,d1
+	add.b	#$30,d1
+	move.l	#"S:DF",6(a0)
+	move.b	#" ",11(a0)
+	move.l	#"D:DF",12(a0)
+	bsr.L	TxtDr
+	bra.s	SupDr
+
+KillXen:move.l	a2,(a4)+
+	move.l	a1,a3
+	add.l	#2,a2
+	sub.l	a2,a3
+	sub.l	#2,a3
+	move.l	a3,(a2)
+	move.b	#$60,(a2)
+	rts
+
+Clr1Dr:	move.b	#" ",(a0)+
+	dbf	d0,Clr1Dr
+	rts
+PasSupD:move.b	#0,Drs		;only df0:
+	move.b	#0,Drd
+	lea	InstDr,a0
+	moveq	#7,d0
+	bsr.s	Clr1Dr
+	lea	MovtDr,a0
+	moveq	#12,d0
+	bsr.s	Clr1Dr
+SupDr:	move.l	4.w,a6
+	move.l	#$10003,d1
+	move.l	#1024,d0
+	jsr	-198(a6)	
+	move.l	d0,Buffer
+	beq.L	EndK2
+	add.l	#$400,d0
+	move.l	d0,BufEnd
+
+	move.l	#$10003,d1
+	move.l	#1042,d0
+	jsr	-198(a6)
+	move.l	d0,ScrP
+	beq.L	EndK2
+
+	move.l	#$10003,d1
+	move.l	#60,d0
+	jsr	-198(a6)
+	tst.l	d0
+	beq.L	EndK2
+	addq	#4,d0
+	and.l	#$fffffffc,d0
+	move.l	d0,InfoBuf
+
+	sub.l	a1,a1
+	jsr	-294(a6)	;findtask
+
+	lea	Diskport,a0
+	move.l	d0,16(a0)
+	move.l	a0,a1
+	jsr	-354(a6)	;addport
+
+	bsr.L	OpenDrs
+
+	move.l	Dosbase,a6
+	move.l  #Name,d1
+	move.l  #1005,d2
+	jsr	-30(a6)
+	move.l  d0,ConHandle
+	beq.L	EndK3
+
+	MOVE.L	#VerifT,D2	
+	bsr.l	Ecrire2
+
+MemTst:	move.l	4.w,a6
+	lea	Intuition,a1		;debut tests memoire
+	moveq	#0,d0
+	jsr	-552(a6)
+	move.l	d0,Intuibase
+	move.l	d0,a0
+	move.l	-202(a0),OldOpenW
+	bsr.l	IoVect
+	bsr.l	RastChk
+	bsr.l	IntVec	
+	bsr.l	ExbIChk
+	bsr.l	RamChk2
+	bsr.l	DosVec
+	bsr.l	IntuiC
+
+	move.l	4.w,a6
+	move.l	20(a6),d0
+	cmp.b	#$002100c0,d0
+	bne.L	PasK12
+	move.l	#$fc12fc,148(a6)	;k1.2	
+	bsr.l	ExbaseC
+	move.l	4.w,a6
+	move.l	Iodevice,a0
+	move.l	#$fe9fbe,-28(a0)	;beginio
+	move.l	#$fe9f92,-10(a0)	;close
+	add.l	#140,a0
+	move.l	(a0),a0
+;	move.l	#$fe9fbe,-28(a0)	;beginio console
+	move.l	Raster,a0
+	move.l	#$fc6cdc,(a0)
+	move.l	#$fc0c52,$64
+	move.l	#$fc0ca6,$68
+	move.l	#$fc0cd8,$6c
+	move.l	#$fc0d30,$70
+	move.l	#$fc0dbe,$74
+	move.l	#$fc0e04,$78
+	move.l	#$fc0e4a,$7c
+	move.l	#$fc07fa,$80
+	move.l	#$fc07fc,$84
+	move.l	#$fc07fe,$88
+	move.l	#$fc0ac0,-94(a6)	;findresident
+	move.l	#$fc18d0,-214(a6)	;availmem
+	move.l	#$fc06dc,-454(a6)	;doio
+	move.l	#$fc0a3c,-610(a6)	;kicksumdata
+	move.l	#$fc1b34,-364(a6)	;putmsg
+	move.l	#$fc0ac0,-94(a6)	;findresident
+	move.l	#$fc1430,-406(a6)	;openlib
+	move.l	#$fc1c48,-280(a6)	;addtask
+	move.l	#$fc1840,-202(a6)	;allocabs
+	move.l	Intuibase,a0
+	move.l	#$fe00d8,-202(a0)	;OpenWindow
+	bra.L	ContChk
+Pask12:	cmp.b	#$00220002,d0
+	bne.L	End
+	move.l	#$fc1338,148(a6)	;k1.3
+	bsr.l	ExbaseC
+	move.l	4.w,a6
+	move.l	Iodevice,a0
+	move.l	#$fe9c3e,-28(a0)	;beginio
+	move.l	#$fe9c12,-10(a0)	;close
+	add.l	#140,a0
+	move.l	(a0),a0
+	move.l	#$fe4cb8,-28(a0)	;beginio console
+	move.l	Raster,a0
+	move.l	#$fc6d48,(a0)
+	move.l	#$fc0c8e,$64
+	move.l	#$fc0ce2,$68
+	move.l	#$fc0d14,$6c
+	move.l	#$fc0d6c,$70
+	move.l	#$fc0dfa,$74
+	move.l	#$fc0e40,$78
+	move.l	#$fc0e86,$7c
+	move.l	#$fc0836,$80
+	move.l	#$fc0838,$84
+	move.l	#$fc083a,$88
+	move.l	#$fc0afc,-94(a6)
+	move.l	#$fc190c,-214(a6)
+	move.l	#$fc0718,-454(a6)
+	move.l	#$fc0a78,-610(a6)
+	move.l	#$fc1b70,-364(a6)
+	move.l	#$fc146c,-406(a6)
+	move.l	#$fc0afc,-94(a6)
+	move.l	#$fc1c84,-280(a6)
+	move.l	#$fc187c,-202(a6)
+	move.l	Intuibase,a0
+	move.l	#$fdfcf4,-202(a0)	;OpenWindow
+ContChk:bsr.L	ProChk2
+	bsr.L	ResChk2
+	move.l	4.w,a6
+	move.l	Intuibase,a1
+	jsr	-414(a6)		;fin tests memoire	
+
+InitExO:cmp.l	#CoolCT,d2
+	beq.s	aloop
+	cmp.l	#Coot,d2
+	beq.s	aloop
+	tst.b	PCmd
+	beq.L	WRet
+	move.l	#PCmdOk,d2
+	bsr.L	Ecrire3
+	tst.b	PCmd
+	bne.L	EndK2
+WRet:	move.l	#RetT,d2
+	bsr.l	Ecrire2
+ALoop:	tst.b	PCmd
+	bne.L	EndK2
+	bsr.L	WaitRet
+
+	move.l	4.w,a6
+	lea	-454(a6),a0
+	lea	NDoIoE,a1
+	move.l	(a0),2(a1)
+	move.l	a6,a1
+	move.l	#-456,a0
+	move.l	#NewDoIo,d0
+	jsr	-420(a6)
+
+Loop:	tst.b	EndFlag
+	bne.s	End
+	move.l  #Texte,d2
+	bsr.L	ecrire2			
+
+Loop2:	bsr	KeyRead
+
+	cmp.b	#"8",d0
+	beq.s	End
+
+	move.l	#MenList,a0
+MenuLp:	move.b	1(a0),d1
+	cmp.b	d0,d1
+	beq.s	Jmpsub			
+	move.b	3(a0),d1
+	cmp.b	d0,d1
+	beq.s	Jmpsub
+	add.l	#8,a0
+	tst.l	(a0)
+	bne.s	MenuLp
+	bra.s	Loop2
+Jmpsub:	move.l	4(a0),a1
+	jsr	(a1)
+	bra.s	Loop	
+
+End:	move.l	4.w,a6
+	lea	NDoIoE,a2
+	move.l	a6,a1
+	move.l	2(a2),d0
+	move.l	#-456,a0
+	jsr	-420(a6)
+
+	move.l	Dosbase,a6
+	move.l  ConHandle,d1
+     	jsr	-36(a6)
+
+	move.l	4.w,a6
+	lea	Diskioreq,a1
+	jsr	-450(a6)	;closedevice
+	lea	DiskPort,a1
+	jsr	-360(a6)	;remport
+
+EndK3:	move.l	Buffer,a1
+	move.l	#1024,d0
+	jsr	-210(a6)
+
+	move.l	ScrP,a1
+	move.l	#1042,d0
+	jsr	-210(a6)
+
+	move.l	InfoBuf,a1
+	move.l	#50,d0
+	jsr	-210(a6)
+
+EndK2:	bsr.L	Closdos
+
+EndK:	bsr.L	WBout
+	moveq	#0,d0
+	rts
+
+Quit:	move.l	#Sure,d2
+	bsr.L	EcriClr
+	bsr.L	KeyRead
+	cmp.b	#"y",d0
+	beq.L	Rset
+	cmp.b	#"Y",d0
+	beq.L	Rset
+	rts
+Rset:	move.l	4.w,a6
+	lea	CleanReset,a5
+	jsr	-30(a6)
+
+Tstram:	MOVE.L	#VerifT,D2	
+	bsr.l	Ecrire2
+	bsr.l	IoVect
+	bsr.l	RastChk
+	bsr.l	IntVec	
+	bsr.l	ExbIChk
+	bsr.l	RamChk2
+	bsr.l	DosVec
+	bsr.l	IntuiC
+	bsr.l	ExbaseC
+	bsr.L	ProChk2
+	bsr.L	ResChk2
+	move.l	#RetT,d2
+	bsr.l	Ecrire2
+	bsr.L	WaitRet
+	rts
+
+CleanReset:
+	move.l	4.w,a6
+	not.l	$24(a6)
+	lea	$2.w,a0
+	reset
+	jmp	(a0)
+
+Link:	move.l	#linkT,D2
+	bsr.l	EcriClr
+LinSub:	bsr.L 	Keyread
+	cmp.b	#"1",d0
+	beq.L	LinFil
+	cmp.b	#"2",d0
+	beq.L	LinStar
+	cmp.b	#"3",d0
+	beq.L	LinDir
+	cmp.b	#"4",d0
+	beq.L	LinVali
+	cmp.b	#"5",d0
+	beq.L	directo
+	cmp.l	#"6",d0
+	bne.L	LinSub
+ELinSub:rts		
+
+LinFil:	move.l	#NameT,d6
+	move.l	#50,d3
+	move.l	#File2,d5
+	bsr.L	Getname
+	move.l	#cls,d2
+	bsr.L	EcriClr
+	bsr.L	TstLink
+	bra.L	Link
+
+LinStar:move.l	#File2,d5
+	move.l	#50,d3
+	move.l	#Volut,d6
+	bsr.L	GetName
+	move.l	Dosbase,a6
+	moveq	#-2,d2
+	move.l	#file2,d1
+	jsr	-84(a6)		;lock
+	move.l	d0,d1
+	jsr	-126(a6)	;cd
+
+	move.l	#LoaStar,d2
+	bsr.L	EcriClr
+
+	move.l	#Startup,d1
+	bsr.L	SeRealL
+	bne.L	Link
+
+	move.l	RealLen,StarLen
+
+NextSta:move.l	#Startup,d5
+	bsr.L	RdFil2
+	bne.L	Link		;err
+	move.l	Rd2Buf,StarBuf
+	bsr.L	CloFile
+	move.l	#ScanStT,d2
+	bsr.L	Ecrire2
+	clr.b	LinkFnd
+	move.l	StarBuf,a0
+
+bra.L	NoRevL
+;----------------------------
+	moveq	#0,d0
+	move.l	d0,d7
+	move.l	d0,d6
+ReLaLp:	addq	#1,d0
+	cmp.b	#$a0,(a0)+
+	beq.s	ReLaLp
+	cmp.l	#6,d0
+	bne.L	NoRevL
+	cmp.b	#$a,-1(a0)
+	bne.L	NoRevL
+
+	move.b	#1,LinkFnd
+	bsr.L	Orange		;revenge found
+	move.l	#LamerR,d2
+	bsr.L	EcriClr
+	bsr.L	Normal
+	move.l	#Detect,d2
+	bsr.L	Ecrire2
+	move.l	#LiKilt,d2
+	bsr.L	Ecrire2
+WLik:	bsr.L	keyread
+	cmp.b	#"e",d0
+	beq.L	NoRevL
+	cmp.b	#"E",d0
+	beq.L	NoRevL
+	cmp.b	#"r",d0
+	beq.L	KillReven
+	cmp.b	#"R",d0
+	bne.L	NoRevL
+KillReven:
+
+	bsr.L	KillRev
+	bne.L	EScan
+	bra.L	LinStar
+;----------------------
+
+NoRevL:	clr.b	EStrtUp
+	move.l	StarBuf,a0
+	move.l	a0,a5
+	add.l	StarLen,a5
+ScanLp:	clr.b	FileFnd
+	lea	File2,a1
+	bsr.L	ScanSta
+
+	tst.b	FileFnd
+	bne.s	LdScFi
+	tst.b	EStrtUp
+	bne.L	EScan
+
+LdScFi:	movem.l	a0/a5,-(a7)
+
+	move.l	Dosbase,a6		;sans "c/"
+	move.l	#File2,d1
+	move.l	#-2,d2
+	jsr	-84(a6)
+	tst.l	d0
+	beq.s	AvecC
+	lea	File2,a1
+	move.l	#LoaLiF,d2
+	bsr.L	Ecrire2
+	bsr.L	Orange
+	move.l	a1,d2
+	bsr.L	SearEnd
+	bsr.L	Ecrire
+	bsr.L	Normal
+	move.l	#File2,d1
+	bsr.L	RdFil
+	bsr.L	TstLin
+	beq.s	ContLi2
+;kill virus
+
+	bra.s	ContLi2
+
+AvecC:	lea	File2-2,a1
+	move.l	#LoaLiF,d2
+	bsr.L	Ecrire2
+	bsr.L	Orange
+	bsr.L	SearEnd
+	bsr.L	Ecrire
+	bsr.L	Normal
+	move.l	#File2-2,d1
+	bsr.L	RdFil
+	bne.L	ContLi2
+	bsr.L	TstLin
+	beq.s	ContLi2
+
+ContLi2:movem.l	(a7)+,a0/a5
+
+	tst.b	EStrtUp
+	bne.s	EScan
+	bra.L	ScanLp
+
+EScan:	move.l	$4.w,a6
+	move.l	StarBuf,a1
+	move.l	StarLen,d0
+	jsr	-210(a6)
+
+	move.l	#Return,d2	
+	bsr.L	Ecrire2
+	move.l	#RetT,d2
+	bsr.L	Ecrire2
+	bsr.L	WaitRet
+	bra.L	Link
+
+LinDir:	move.b	#1,DirScan
+;	bsr.L	Direct2
+	bra.L	link
+
+LinVali:move.l	#File2,d5
+	move.l	#50,d3
+	move.l	#Volut,d6
+	bsr.L	GetName
+	move.l	Dosbase,a6
+	moveq	#-2,d2
+	move.l	#file2,d1
+	jsr	-84(a6)
+	move.l	d0,d1
+	jsr	-126(a6)
+	move.l	#1848,RealLen
+	move.l	#ValiNam,d5
+	bsr.L	RdFil2
+	bne.L	Link
+	lea	ValiTab,a0
+ValiLp:	move.l	Rd2Buf,a1
+	move.l	(a0),d0
+	move.l	0(a1,d0.l),d1
+	cmp.l	4(a0),d1
+	beq.s	OkVal
+	move.l	4(a1,d0.l),d1
+	cmp.l	8(a0),d1
+	beq.s	OkVal
+	add.l	#20,a0
+	tst.l	(a0)
+	bne.s	ValiLp
+	bsr.L	Orange
+	move.l	#IllVali,d2
+	bsr.L	EcriClr
+	bsr.L	Normal
+	bsr.L	Wait
+;	move.l	12(a0),a2
+;	jsr	(a1)	;kill virus
+	bra.s	EndVali
+OkVal:	move.l	16(a0),d2
+	cmp.l	#NorVali,d2
+	beq.s	OkVali
+	bsr.L	Orange
+OkVali:	move.l	16(a0),d2
+	bsr.L	EcriClr
+	bsr.L	Normal
+	bsr.L	Wait
+EndVali:bsr.L	CloFi2
+	bra.L	Link
+
+Directo:clr.b	DirScan
+Direct2:clr.b	Ident
+	clr.b	DStep
+	move.l	#File2,d5
+	move.l	#50,d3
+	move.l	#patht,d6
+	bsr.L	GetName
+
+	clr.l	d5
+	move.l	d5,d7
+
+	move.l	$4.w,a6
+	move.l	#300,d0
+	move.l	#$10003,d1
+	jsr	-198(a6)	;allocmem
+	tst.l	d0
+	beq.L	Enddir
+	add.l	#4,d0
+	and.l	#$fffffffc,d0	;long word aligned
+	move.l	d0,Fileinfo
+
+	move.l	Dosbase,a6
+	move.l	#file2,d1	;nom
+	move.l	#-2,d2		;mode lecture
+	jsr	-84(a6)		;lock	
+	move.l	d0,Locksav
+
+	move.l	Fileinfo,d2
+	move.l	LockSav,d1
+	move.l	Dosbase,a6
+	jsr	-114(a6)	;info
+	tst.l	d0
+	beq.L	enddir
+	moveq	#0,d0
+	move.l	d0,d1
+	move.l	Fileinfo,a0
+	move.w	18(a0),d0
+	move.w	14(a0),d5
+	sub.l	d0,d5
+	mulu	#488,d5
+
+	move.l	Dosbase,a6
+	move.l	Locksav,d1
+	move.l	Fileinfo,d2
+	jsr	-102(a6)	;examine
+
+	bsr.L	orange
+	move.l	#return,d2
+	bsr.L	ecrire2
+	move.l	#Vol,d2		;path
+	bsr.L	Ecrire2
+	move.l	d5,d4
+	move.l	Fileinfo,a0
+	add.l	#8,a0		;ptr name
+	move.l	a0,d2		;begin
+	bsr.L	Ecrire4
+	move.l	#tab,d2
+	bsr.L	Ecrire2
+	bsr.L	Conv4
+	move.l	#convt,d2
+	bsr.L	Ecrire2
+	move.l	#free,d2
+	bsr.L	Ecrire2
+	move.l	#return,d2
+	bsr.L	ecrire2
+	bsr.L	normal
+	move.l	Fileinfo,a0
+	bra.L	Okname2
+
+Print:	move.l	Fileinfo,a0
+	cmp.l	#-3,4(a0)	;file
+	bne.s	Pasfile
+	move.l	124(a0),d4
+	bsr.L	Conv4
+	move.l	#convt,d2
+	bsr.L	Ecrire2
+	move.b	#1,Ident
+	bra.s	Okname
+Pasfile:cmp.l	#$2,4(a0)	;dir
+	bne.L	End
+	move.l	#dir,d2
+	bsr.L	ecrire2
+	move.b	#2,Ident
+
+	tst.b	DirScan
+	beq.s	OkName
+	bsr.L	DoStep
+	move.l	Dosbase,a6
+	move.l	LockSav,d1
+	move.l	Fileinfo,d2
+	jsr	-126(a6)	;cd
+	move.l	d0,LockSav
+
+	move.l	Dosbase,a6
+	move.l	Locksav,d1
+	move.l	Fileinfo,d2
+	jsr	-102(a6)	;examine
+	addq.b	#1,DStep
+
+Okname:	move.l	Fileinfo,a0
+	add.l	#8,a0		;ptr name
+	move.l	a0,d2		;begin
+
+	bsr.L	Ecrire4
+	tst.b	DirScan
+	beq.s	DirPt1
+	cmp.b	#1,Ident
+	bne.s	pasfil
+	;tstlink
+	bra.s	OkName2
+PasFil:	
+DirPt1:	move.l	#return,d2
+	bsr.L	ecrire2
+
+Okname2:add.l	#1,d7
+	cmp.l	#14,d7
+	bne.s	dixpt
+	move.l	#waitrt,d2
+	bsr.L	ecrire2
+	clr.l	d7
+	bsr.L	WaitRet
+	move.l	#lpt,d2
+	bsr.L	ecrire2
+dixpt:	move.l	Dosbase,a6
+	move.l	Locksav,d1
+	move.l	Fileinfo,d2
+	jsr	-108(a6)	;exnext
+	tst.l	d0
+	bne.L	Print
+	tst.b	DirScan
+	beq.s	DirPt2
+	move.l	Dosbase,a6
+	move.l	LockSav,d1
+	move.l	Fileinfo,d2
+	jsr	-210(a6)	;parent
+	move.l	d0,LockSav
+	beq.s	DirPt2		;root
+	subq.b	#1,DStep
+	move.l	Dosbase,a6
+	move.l	Locksav,d1
+	move.l	Fileinfo,d2
+	jsr	-102(a6)	;examine
+	bra.L	Print
+
+DirPt2:	tst.l	d7
+	beq.s	enddir
+	move.l	#waitrt,d2
+	bsr.L	ecrire2
+	bsr.L	Waitret
+
+Enddir:	move.l	$4.w,a6
+	move.l	Fileinfo,a1
+	move.l	#300,d0
+	jsr	-210(a6)
+	bra.L	Link
+
+DoStep:	tst.b	DStep
+	beq.s	EndStep
+	subq.b	#1,DStep
+	moveq	#0,d0
+	move.b	DStep,d0
+DiStLp:	move.l	#dirtab,d2
+	bsr.L	Ecrire2
+	btst	#10,$dff016
+	beq.s	EndStep
+	dbf	d0,DiStLp
+EndStep:rts
+
+Ecrire4:move.l	d2,a0
+	moveq	#0,d3
+EcrLP:	addq	#1,d3		;search end
+	tst.b	(a0)+
+	bne.s	EcrLp
+	subq	#1,d3
+	bsr.L	ecrire
+	rts
+
+Conv4:	lea	Convt-2,a0
+	moveq	#7,d0
+CConTLp:move.b	#" ",(a0)+
+	dbf	d0,CConTLp
+	clr.l	d0
+	clr.l	d6
+	lea	Convt-2,a0
+	divu	#10000,d4
+	move.w	d4,d0
+	bsr.s	Convb
+	swap	d4
+	move.w	d4,d0
+	addq.l	#4,a0
+	bsr.s	Convb
+	rts
+
+Convb:	movem.l	a0/d4,-(a7)
+	move.l	#1000,d4
+	moveq	#2,d2
+ConvLp:	divu	d4,d0
+	add.b	#"0",d0
+	tst.l	d6
+	bne.s	NoSpc
+	cmp.b	#$30,d0
+	bne.s	NoSpc	
+	addq	#1,a0	
+	bra.s	SpcPt
+NoSpc:	moveq	#1,d6
+	move.b	d0,(a0)+
+SpcPt:	clr.w	d0
+	swap	d0
+	divu	#10,d4
+	dbf	d2,ConvLp
+	add.b	#"0",d0
+	tst.l	d6
+	bne.s	NoSpc2
+	cmp.b	#$30,d0
+	bne.s	NoSpc2
+	addq	#1,a0
+	bra.s	SpcPt2
+NoSpc2:	moveq	#1,d6
+	move.b	d0,(a0)+
+SpcPt2:	movem.l	(a7)+,a0/d4
+	rts
+
+Locksav:dc.l	0
+
+Vol:	dc.b	$c,$9b,"0 p","Path : ",-1
+Dir:	dc.b	"   Dir ",-1
+dirtab:	dc.b	$9b,"1",$43,-1
+waitrt:	dc.b	$a," Press return to continue",-1
+OptaF:	dc.b	0
+dc.b	"  "
+convt:	dc.b	"       ",-1
+Free:	dc.b	"Bytes Free",-1
+tab:	dc.b	$9b,"0",$45,$9b,"0",$46,$9b,"40",$43,-1
+lpt:	dc.b	$9b,"2;1",$48,$9b,$4a,-1
+Named:	dc.b	"DF0:",0
+
+SearEnd:move.l	a1,d2
+	moveq	#0,d3
+SearELp:add.l	#1,d3
+	tst.b	(a1)+
+	bne.s	SearELP
+	sub.l	#1,d3
+	rts
+
+SeRealL:clr.l	RealLen		;d1=name
+	move.l	d1,-(a7)
+	move.l	$4.w,a6
+	move.l	#$10003,d1
+	move.l	#1024*20,d0
+	jsr	-198(a6)	;allocmem
+	move.l	(a7)+,d1
+	move.l	d0,RealLBu
+	beq.L	SeReLE
+
+	move.l	Dosbase,a6
+	move.l	#1005,d2
+	jsr	-30(a6)		;open
+	move.l	d0,iboot
+	bne.s	OkRdSt
+	move.l	#NotFt,d2	;err
+	bsr.L	EcriClr
+	bsr.L	wait
+	bra.s	FreeMSt
+OkRdSt:
+	move.l	d0,d1
+	move.l	Dosbase,a6
+	move.l	RealLBu,d2
+	move.l	#1024*20,d3
+	jsr	-42(a6)		;read
+	move.l	d0,RealLen
+
+	bsr.L	CloFile
+
+FreeMSt:move.l	$4.w,a6
+	move.l	RealLBu,a1
+	move.l	#1024*20,d0
+	jsr	-210(a6)
+	tst.l	Iboot
+	beq.L	SeReLE
+	tst.l	RealLen
+	beq.L	SeReLE
+	moveq	#0,d0
+	rts
+SeReLE:	moveq	#-1,d0
+	rts
+
+WaitFLi:cmp.l	a0,a5
+	beq.s	FinSt2
+	cmp.b	#$a,(a0)+
+	bne.s	WaitFLi
+ScanSta:cmp.b	#$3b,(a0)
+	beq.s	WaitFLi
+	cmp.b	#$a,(a0)
+	beq.s	NextSca
+	cmp.b	#9,(a0)
+	beq.s	NextSca
+	cmp.b	#" ",(a0)
+	beq.s	NextSca
+	cmp.b	#$22,(a0)
+	beq.s	Guill
+CoFiSta:cmp.l	a0,a5
+	beq.s	FinSt2
+	move.b	(a0)+,(a1)+
+	cmp.l	a0,a5
+	beq.s	FinSta
+	cmp.b	#" ",(a0)	
+	beq.s	FinCop
+	cmp.b	#$3b,(a0)
+	beq.s	FinCop
+	cmp.b	#$a,(a0)
+	beq.s	FinCop
+	cmp.b	#9,(a0)
+	beq.s	FinCop
+	bra.s	CoFiSta
+NextSca:addq	#1,a0
+	cmp.l	a0,a5
+	beq.s	FinSt2
+	bra.s	ScanSta
+FinSta:	clr.b	(a1)+
+FinSt2:	move.b	#1,EStrtUp
+	rts
+FinCop:	move.b	#1,FileFnd
+	cmp.l	a0,a5
+	beq.s	FinSt2
+	cmp.b	#$a,(a0)+
+	bne.s	FinCop
+	cmp.l	a0,a5
+	beq.s	FinSta
+	clr.b	(a1)+
+	rts
+Guill:	move.b	#1,FileFnd
+	addq	#1,a0
+GuilLp:	cmp.l	a0,a5
+	beq.s	FinSta
+	cmp.b	#$22,(a0)
+	beq.s	FinCop
+	move.b	(a0)+,(a1)+
+	bra.s	GuilLp
+
+TstLink:bsr.L	RdFile
+	bne.L	CloLin
+TstLin:	bsr.L	CloFile
+	lea	linktab,a0
+	move.l	Buffer,a1
+	cmp.l	#$3f3,(a1)
+	bne.L	LinkErr
+HunkSe:	cmp.w	#$3e9,(a1)+
+	bne.s	HunkSe
+	move.l	(a1)+,d0
+SeaLLp:	cmp.l	(a0),d0
+	bne.s	Nolink
+	move.l	4(a0),d0
+	move.l	0(a1,d0.l),d1
+	cmp.l	8(a0),d1
+	bne.s	NoLink
+	move.l	4(a1,d0.l),d1
+	cmp.l	12(a0),d1
+	bne.s	NoLink
+	move.b	#1,LinkFnd
+	cmp.l	#cls,d7
+	bne.s	TstLiPt
+	move.l	#Return,d2
+	bsr.L	Ecrire2
+TstLiPt:bsr.L	Orange
+	move.l	20(a0),d2
+	bsr.L	Ecrire2
+	bsr.L	Normal
+	move.l	#Detect2,d2
+	bsr.L	Ecrire2
+	bsr.L	Wait
+;	move.l	16(a0),a1	;kill link
+;	jsr	(a1)
+	bra.s	CloLin
+Nolink:	add.l	#24,a0
+	tst.l	(a0)
+	bne.s	SeaLLp
+;crunched file ?
+	cmp.l	#cls,d7
+	beq.s	UnkLFi
+	move.l	#UnkLiT,D2
+	bsr.L	Ecrire2
+	bsr.L	Wait
+	moveq	#0,d0
+	rts
+UnkLFi:	move.l	#UnkT,D2
+	bsr.L	EcriClr
+	bsr.L	Wait
+	moveq	#0,d0
+	rts
+CloLin:	moveq	#-1,d0
+	rts
+
+LinkErr:move.l	#NotExec,d2
+	bsr.L	Ecrire2
+	bsr.L	Wait
+	rts
+
+KillRev:move.l	Dosbase,a6
+	move.l	#Startup,d1
+	moveq	#0,d2
+	jsr	-186(a6)	;setprotect
+
+	move.l	Dosbase,a6
+	move.l	#Startup,d1
+	move.l	#1006,d2
+	moveq	#0,d0
+	jsr	-30(a6)		;open
+	move.l	d0,IBoot
+	beq.L	CantOpR
+
+	moveq	#6,d4
+	move.l	d0,d1
+	move.l	#$55,d7
+	move.l	StarBuf,d2
+	add.l	d4,d2
+	sub.l	d4,StarLen
+	move.l	StarLen,d3
+	jsr	-48(a6)		;write
+	move.l	StarLen,d1
+	cmp.l	d1,d0
+	bne.s	WrStErr
+
+	moveq	#0,d7
+	move.l	#RemStar,d2
+	bsr.L	Ecrire2
+	bsr.L	Wait
+
+WrStErr:bsr.L	CloFile
+
+	cmp.l	#$55,d7
+	bne.L	OkRevSt
+CantOpR:move.l	#LiWrEna,d2
+	bsr.L	Ecrire2
+	bsr.L	Wait
+	moveq	#-1,d0
+	rts
+OkRevSt:
+	move.l	Dosbase,a6
+	move.l	#LamName,d1
+	moveq	#0,d2
+	jsr	-186(a6)	;setprotect
+
+	move.l	Dosbase,a6
+	move.l	#LamName,d1
+	jsr	-72(a6)		;delete
+	tst.l	d0
+	beq.s	ReLaErr
+
+	move.l	#VirDel,d2
+	bsr.L	Ecrire2
+	bsr.L	Wait
+	moveq	#0,d0
+	rts
+ReLaErr:moveq	#-1,d0
+	rts
+
+RdFil2:	move.l	$4,a6		;RealLen/d5=name
+	move.l	RealLen,d0
+	move.l	#$10003,d1
+	jsr	-198(a6)
+	move.l	d0,Rd2Buf
+	beq.s	RdF2Er
+
+	move.l	Dosbase,a6
+	move.l	d5,d1
+	move.l	#1005,d2
+	jsr	-30(a6)		;open
+	move.l	d0,iboot
+	bne.L	RdReOk
+	move.l	#NotFt,d2	;err
+	bsr.L	EcriClr
+	bsr.L	wait
+	bsr.s	FreRd2
+RdF2Er:	move.l	#-1,d0
+	rts
+
+RdReOk:	move.l	d0,d1
+	move.l	Dosbase,a6
+	move.l	Rd2Buf,d2
+	move.l	RealLen,d3
+	jsr	-42(a6)		;read
+	cmp.l	d3,d0
+	rts
+
+CloFi2:	move.l	Dosbase,a6
+	move.l	iboot,d1
+	jsr	-36(a6)		;close
+
+FreRd2:	move.l	$4.w,a6
+	move.l	Rd2Buf,a1
+	move.l	RealLen,d0
+	jsr	-210(a6)	;freemem
+	rts
+
+RdFile:	move.l	d2,d7
+	move.l	#File2,d1
+RdFil:	move.l	Dosbase,a6
+	move.l	#1005,d2
+	jsr	-30(a6)		;open
+	move.l	d0,iboot
+	bne.L	RdLOk
+	cmp.l	#cls,d7
+	beq.s	FiTLiNF
+	move.l	#NotFtLi,d2	;err
+	bsr.L	Ecrire2
+	bsr.L	wait	
+	moveq	#-1,d0
+	rts
+FiTLiNF:move.l	#NotFt,d2	;err
+	bsr.L	EcriClr
+	bsr.L	wait	
+	moveq	#-1,d0
+	rts
+
+
+RdLOk:	move.l	d0,d1
+	move.l	Dosbase,a6
+	move.l	Buffer,d2
+	move.l	#1024,d3
+	jsr	-42(a6)		;read
+	moveq	#0,d0
+	rts
+CloFile:move.l	Dosbase,a6
+	move.l	iboot,d1
+	jsr	-36(a6)		;close
+	rts
+
+AutoChk:move.b	#1,AutoF
+	lea	autotxt,a0
+	move.l	#"on  ",(a0)	
+	move.l	#texte,d2
+	bsr.L	ecrire2
+AChkLp:	move.b	$bfec01,d0
+	btst	#0,d0
+	beq.s	AChkLp
+	bsr.L	KeyRead
+	cmp.b	#"S",d0
+	beq.s	SetDrs
+	cmp.b	#"s",d0
+	beq.s	SetDrs
+	cmp.b	#"T",d0
+	beq.s	AChkE
+	cmp.b	#"t",d0
+	beq.s	AChkE
+	cmp.b	#"8",d0
+	beq.s	autoEE
+	bra.s	AChkLp
+SetDrs:	bsr.L	NextDrs
+	move.l	#texte,d2
+	bsr.L	ecrire2
+	bra.s	AChkLp
+AutoEE:	move.b	#1,EndFlag
+AchkE:	clr.b	AutoF
+	lea	autotxt,a0
+	move.l	#"off ",(a0)	
+	rts
+
+NewDoIo:tst.b	AutoF
+	beq.L	NDoIoE
+	cmp.b	#$2,$1d(a1)	;read ?
+	bne.L	NDoIoE
+	tst.l	$2c(a1)		;boot ?
+	bne.L	NDoIoE
+	cmp.l	#$200,$24(a1)	;1 secteur ?
+	beq.s	NDoOk
+	cmp.l	#$400,$24(a1)	;2 secteur ?
+	bne.L	NDoIoE
+NDoOk:	movem.l	d0-d7/a0-a6,-(a7)
+DskDrLp:moveq	#0,d1
+	move.b	Drs,d1
+	moveq	#-1,d0
+	bclr	d1,d0
+	rol.b	#3,d0		;calcul dr
+	and.b	#%01111000,d0	;mask dr
+	moveq	#0,d1
+	move.l	$18(a1),a0
+	move.b	$41(a0),d1
+	and.b	#%01111000,d1
+	cmp.b	d0,d1		;source ?
+	bne.L	NDoIo
+	moveq	#0,d0
+	bsr.L	SaReIo
+	move.l	4.w,a6
+	move.w	#2,28(a1)	;read
+	move.l	#1024,36(a1)
+	move.l	buffer,40(a1)
+	move.l	#0,44(a1)
+	bsr.L	NDoIoE
+	move.l	4.w,a6
+	move.w	#9,28(a1)	;motor off
+	clr.l	36(a1)
+	bsr.s	NDoIoE
+	move.l	a1,-(a7)
+	bsr.L	Check
+	move.l	(a7)+,a1
+	tst.l	d0
+	beq.s	PasKill
+	move.l	4.w,a6
+	move.w	#3,28(a1)	;write
+	move.l	#1024,36(a1)
+	move.l	Buffer,40(a1)
+	move.l	#0,44(a1)
+	bsr.s	NDoIoE
+	move.w	#4,28(a1)	;update
+	move.l	#1024,36(a1)
+	move.l	buffer,40(a1)
+	move.l	#0,44(a1)
+	bsr.s	NDoIoE
+	move.l	4.w,a6
+	move.w	#9,28(a1)	;motor off
+	clr.l	36(a1)
+	bsr.s	NDoIoE
+PasKill:move.l	#Texte,d2
+	bsr.L	Ecrire2
+	moveq	#1,d0
+	bsr.s	SaReIo
+NDoIo:	movem.l	(a7)+,d0-d7/a0-a6
+NDoIoE:	jmp	0
+
+SaReIo:	lea	SaveIo,a2	; d0=0 = save
+	lea	28(a1),a0
+	tst.l	d0
+	beq.s	SavIoP
+	exg	a0,a2
+SavIoP:	moveq	#4,d0
+SRIoLp:	move.l	(a0)+,(a2)+
+	dbf	d0,SRIoLp
+	rts
+
+closdos:move.l	4.w,a6
+	move.l	dosbase,a1
+	jsr	-414(a6)
+	rts
+
+analyse:tst.b	AutoF
+	bne.L	AnaErr
+	moveq	#1,d7
+	move.b	#0,VirDia
+	bsr.L	Readtrk
+	bne.L	AnaErr
+	move.l	#analt,d2
+	bsr.L	ecrire2
+	move.l	bufend,a5
+	move.l	buffer,a0
+	move.l	#$400,d0
+zerolp:	cmp.l	a0,a5	;length boot
+	beq.s	zerobe
+	tst.b	(a0)+
+	beq.s	zerof
+	move.l	#$401,d0
+zerof:	subq	#1,d0
+	bra.s	zerolp
+zerobe:	move.l	d0,lenboot
+	lea	lenab0,a0
+	bsr.L	conv3
+	move.l	#lenab,d2
+	bsr.L	ecrire2
+	lea	lenab0,a0
+ACh0Lp:	cmp.b	#"0",(a0)+
+	beq.s	ACh0Lp
+	subq	#1,a0
+	move.l	a0,d2
+	bsr.L	Ecrire2
+	move.l	buffer,a0
+	tst.l	12(a0)
+	beq.L	okbcod
+	lea	dosname,a1
+dosllp:	cmp.l	a0,a5	;cherche chaine 'dos.lib'
+	beq.s	codedb2
+	move.b	(a0)+,d0
+	cmp.b	(a1),d0
+	bne.s	dosllp
+	addq	#1,a1
+	tst.b	(a1)
+	bne.s	dosllp
+	moveq	#0,d0
+	move.l	buffer,a0
+rtslp:	cmp.l	a0,a5	;compte les 'RTS' 
+	beq.s	endrts
+	cmp.b	#$4e,(a0)+
+	bne.s	rtslp
+	cmp.b	#$75,(a0)
+	bne.s	rtslp
+	addq	#1,d0
+	bra.s	rtslp
+endrts: tst.l	d0
+	beq.s	codedb2
+	move.l	lenboot,d1
+	asr.l	#8,d1
+	cmp.l	d1,d0
+	bhi.s	okbcod
+	move.l	buffer,a0
+	add.l	#12,a0
+icodb:	move.l	#codbl,a1
+cryplp:	cmp.l	a0,a5
+	beq.s	okbcod
+	move.w	(a0)+,d0
+nmadr:	move.l	d0,d1
+	and.w	(a1),d1
+	cmp.w	2(a1),d1
+	beq.s	codedb1
+	addq	#4,a1
+	tst.w	(a1)
+	bne.s	nmadr
+	bra.s	icodb
+codedb1:move.l	#bootcod1,d2	
+	bra.s	codedb
+codedb2:move.l	#bootcod2,d2
+codedb:	bsr.L	ecrire2
+	moveq	#0,d7
+
+okbcod:	move.l	buffer,a0	
+ukslp:	cmp.l	a0,a5	;jsr	-612(a6)
+	beq.s	enduks	;move.l	d0,554(a6)	
+	addq	#2,a0
+	cmp.l	#$4eaefd9c,(a0)	
+	bne.s	ukslp		
+	cmp.l	#$2d40022a,4(a0)
+	bne.s	ukslp
+	move.l	#anamemt,d2
+	bsr.L	ecrire2
+	bsr.L	orange
+	move.l	#usekst,d2
+	bsr.L	ecrire2
+	bsr.L	normal
+	moveq	#0,d7
+enduks:	
+	move.l	#adrmodl+2,a2
+	move.l	#analist+2,a1
+anabuf:	move.l	buffer,a0
+modiflp:cmp.l	a0,a5
+	beq.L	endmod
+	move.w	(a0)+,d0
+	cmp.w	(a1),d0
+	bne.s	modiflp
+modif:	move.w	8(a2),d1	;offset
+	subq	#2,d1
+	move.w	0(a0,d1.w),d2	
+	move.w	(a2),d3		;masque
+	and.w	d3,d2
+	cmp.w	4(a2),d2	
+	beq.s	madrr
+nmodadr:add.l	#12,a2
+	tst.w	(a2)
+	bne.s	modif
+	move.l	#adrmodl+2,a2
+	bra.s	modiflp
+madrr:	tst.l	d7
+	beq.s	nomemt
+	move.l	#anamemt,d2
+	bsr.L	ecrire2
+	moveq	#0,d7
+nomemt:	cmp.w	#$42ae,d2
+	bne.s	nclrmo
+	bsr.L	orange
+	move.l	#motclr,d2
+	bsr.L	ecrire2
+	move.l	2(a1),d2
+	add.l	#10,d2
+	bsr.L	ecrire2	
+	bsr.L	normal
+	bra.s	nmodadr
+nclrmo:	bsr.L	orange
+	move.l	2(a1),d2
+	bsr.L	ecrire2
+	bsr.L	normal
+endmod:	addq	#8,a1
+	tst.w	(a1)
+	bne.L	anabuf
+
+	move.l	#rett,d2
+	bsr.L	ecrire2
+	bsr.L	waitret
+nwret:	moveq	#1,d6
+	move.l	buffer,a0
+rwiolp:	cmp.l	a0,a5
+	beq.L	rwio	;move.w	#$000?,$1c(a1)
+	addq	#2,a0	;move.b	#$0?,$1c(a1)
+	cmp.w	#$237c,(a0)
+	bne.s	niopar1
+	move.w	6(a0),d0
+	move.l	2(a0),d1
+	bsr.L	idiopar
+niopar1:cmp.w	#$42a9,(a0)
+	bne.s	niopar2
+	moveq	#0,d0
+	move.w	2(a0),d1
+	bsr.L	idiopar
+niopar2:move.l	(a0),d0
+	and.l	#$337cfff0,d0
+	cmp.l	#$337c0000,d0	
+	bne.s	niocmd
+	cmp.w	#$1c,4(a0)
+	bne.s	rwiolp
+	bra.s	iocmdok
+niocmd:	and.l	#$137cfff0,d0
+	cmp.l	#$137c0000,d0
+	bne.s	rwiolp
+	cmp.w	#$1d,4(a0)
+	bne.s	rwiolp
+iocmdok:tst.l	d6
+	beq.s	npdskt
+	move.l	#analt,d2
+	bsr.L	ecrire2
+	move.l	#anadskt,d2
+	bsr.L	ecrire2
+npdskt:	moveq	#0,d6
+	moveq	#0,d7
+	move.l	#return,d5
+
+	lea	iolist,a2
+ioclp:	move.b	3(a2),d0
+	cmp.b	3(a0),d0
+	bne.s	notioc
+	move.l	4(a2),d5
+notioc:	addq	#8,a2
+	tst.l	(a2)
+	bne.s	ioclp
+	bsr.L	orange
+	move.l	#useioc,d2
+	bsr.L	ecrire2
+	cmp.l	#writio,d5
+	bne.s	notwrc
+	add.b	#1,virdia
+notwrc:	cmp.l	#readio,d5
+	bne.s	notrec
+	add.b	#1,loadia
+notrec:	move.l	d5,d2	
+	bsr.L	ecrire2
+	bsr.L	normal
+	bra.L	rwiolp
+rwio:
+	tst.l	d7
+	beq.s	endmp1
+	move.l	#ananoth,d2
+	bsr.L	ecrire2
+	bsr.L	wait
+	rts
+endmp1:	move.b	virdia,d0
+	move.b	loadia,d1
+	move.b	d1,d2
+	add.b	d0,d2
+	tst.b	d2
+	beq.s	anaerr
+	cmp.b	#2,d0
+	bge.s	survir
+	tst.b	virdia
+	beq.s	bblo
+	move.l	#bbvir1,d2
+	bra.s	endana
+survir:	move.l	#bbvir2,d2
+	bra.s	endana
+bblo:	move.l	#bbloa,d2
+endana:	bsr.L	ecrire2
+	move.l	#rett,d2
+	bsr.L	ecrire2
+	bsr.L	waitret
+anaerr:	rts
+
+idiopar:lea	ioparl,a2	
+idparlp:cmp.w	2(a2),d0
+	bne.s	unpar
+	move.l	d1,d4
+	tst.l	d6
+	beq.s	niopt
+	move.l	#analt,d2
+	bsr.L	ecrire2
+	move.l	#anadskt,d2
+	bsr.L	ecrire2
+	moveq	#0,d6
+niopt:	move.l	d4,d0
+	bsr.L	conv
+novlen:	move.l	4(a2),d2
+	cmp.l	#iolen,d2
+	bne.s	nlen
+	cmp.l	#$400,d4
+	bne.s	nvlen
+	add.b	#1,virdia	
+nvlen:	add.b	#1,loadia
+nlen:	bsr.L	ecrire2	
+	move.l	#convtxt,d2
+	bsr.L	ecrire2
+	moveq	#0,d7
+unpar:	addq	#8,a2
+	tst.l	(a2)
+	bne.s	idparlp
+	rts
+
+CheckSum:tst.b	AutoF
+	bne.s	EndSum
+	move.l	#SouT,d2
+	bsr.L	EcriClr
+	bsr.L	WaitRet
+	bsr.L	ReadTrk
+	bne.S	EndSum
+	bsr.L	DoSum
+	move.l	Dosbase,a6
+	move.l	#SumT,d2
+	bsr.L	EcriClr
+	move.l	#50,d1
+	jsr	-198(a6)
+	move.l	#Wr,d2
+	bsr.L	EcriClr
+	bsr.L	WritB
+EndSum:	rts
+
+WbStart:clr.l	WbMsg
+	move.l	4.w,a6
+	sub.l	a1,a1		;current task
+	jsr	-294(a6)	;FindTask
+	move.l	d0,a4
+	tst.l	172(a4)		;pr_CLI
+	bne.s	FromCli
+	lea	92(a4),a0	;pr_MsgPort
+	jsr	-384(a6)	;WaitPort
+	lea	92(a4),a0	;pr_MsgPort
+	jsr	-372(a6)	;GetMsg
+	move.l	d0,WbMsg	;sauve Msg
+FromCli:rts
+
+WbOut:	tst.l	Wbmsg
+	beq.s	EndCli
+	move.l	4.w,a6
+	jsr	-132(a6)	;Forpib
+	move.l	WbMsg,a1
+	jsr	-378(a6)	;ReplyMsg
+Endcli:	rts
+
+Ecrire3:move.l	Dosbase,a6
+	jsr	-60(a6)
+	move.l	d0,d1	
+	bra.s	Ecr3
+Ecrire2:move.l	Conhandle,d1
+Ecr3:	move.b	#0,FlagEcr
+	movem.l	a1/a0/d2/d3,-(a7)
+	move.l	d2,a0
+	clr.l	d3
+EcriLp:	addq	#1,d3
+	cmp.b	#-1,(a0)+
+	bne.s	EcriLp
+	subq	#1,d3
+	bra.s	Ecr1
+Ecrire:	move.l	Conhandle,d1
+	move.b	#1,FlagEcr
+Ecr1:	move.l	a0,-(a7)
+	move.l	Dosbase,a6
+	jsr	-48(a6)
+	move.l	(a7)+,a0
+	tst.b	FlagEcr
+	bne.s	EndEcr
+	movem.l	(a7)+,a1/a0/d2/d3
+EndEcr:	rts
+EcriClr:move.l	d2,-(a7)
+	move.l	#EcrClrT,d2
+	bsr.s	Ecrire2
+	move.l	(a7)+,d2
+	bsr.s	Ecrire2
+	rts
+
+Keypage:move.l	#keytxt,d2
+	bsr.L	ecrire2
+	bsr.L	waitret
+	moveq	#-1,d2
+	rts
+
+Greet:	move.l	#Greeti,d2
+	bsr.L	ecrire2
+	bsr.L	waitret
+	moveq	#-1,d2
+	rts
+
+Amiguy:	move.l	#guytxt,d2
+	bsr.L	ecrire2
+	bsr.L	waitret
+	moveq	#-1,d2
+	rts
+
+Copyb:	move.l	buffer,a0
+	move.l	boots,a1
+	move.l	#$100,d0
+Coplp:	move.l	(a1)+,(a0)+
+	dbf	d0,coplp
+	rts
+
+Opendrs:clr.l	d0
+	move.b	drs,d0
+	bra.s	opendr
+Opendrd:clr.l	d0
+	move.b	drd,d0
+	bra.s	opendr
+Opendev:sub.b	#$30,d0
+Opendr:	move.l	d0,d0
+	move.l	4.w,a6
+	moveq	#0,d1
+	lea	Diskioreq,a1
+	lea	Trkdisk,a0
+	jsr	-444(a6)
+	tst.l	d0
+	bne.L	end
+	rts
+
+Chkboot:tst.b	AutoF
+	bne.s	PasRead
+	bsr.L	Readtrk
+	bne.S	EndCBoot
+PasRead:move.l	Buffer,a0
+	lea	Bootlist,a1
+Bspelp:	move.l	(a1),d0
+	move.l	0(a0,d0.l),d1
+	cmp.l	4(a1),d1
+	bne.s	NoBSpe
+	move.l	4(a0,d0.l),d1
+	cmp.l	8(a1),d1
+	bne.s	NoBSpe
+	bsr.L	Orange
+	move.l	#Cls2,d2
+	bsr.L	EcriClr
+	move.l	$c(a1),d2
+	bsr.L	Ecrire2
+	bsr.L	Normal
+	move.l	#Reco,d2
+	bsr.L	Ecrire2
+	tst.b	AutoF
+	beq.s	NoAutoC
+	bsr.L	Wait
+	rts
+NoAutoC:bsr.L	WaitRet
+	rts
+NoBSpe:	add.l	#16,a1
+	tst.l	(a1)
+	bne.s	BSpeLp
+EndCBoot:rts
+
+Display:tst.b	AutoF
+	bne.s	EndDisp
+	bsr.L	ReadTrk
+	bne.L	DisRam
+	move.l	Buffer,a0
+Displ2:	move.l	#Cls,d2
+	bsr.L	Ecrire2
+	lea	Scr,a1
+	lea	$400(a0),a2	
+Scrct:	move.b	(a0),d0
+	cmp.b	#$7f,d0
+	bhi.s	NoCar
+	cmp.b	#$20,d0
+	blo.s	Nocar
+	move.b	(a0),(a1)+
+	bra.s	Cont
+NoCar:	move.b	#$2e,(a1)+
+Cont:	add.l	#1,a0
+	cmp.l	a0,a2
+	bne.s	Scrct
+	move.l	#Scr,d2
+	move.l	#$400,d3
+	bsr.L	Ecrire	
+DisWaR:	bsr.L	KeyRead
+	cmp.b	#"p",d0
+	beq.s	DisPrt
+	cmp.b	#"P",d0
+	beq.s	DisPrt
+	cmp.b	#"R",d0
+	beq.L	DisRam
+	cmp.b	#"r",d0
+	beq.L	DisRam
+	cmp.b	#$d,d0
+	bne.s	DisWaR
+EndDisp:rts
+
+DisPrt:	btst	#0,$bfd000	;on line
+	bne.L	VeriPrt
+	btst	#1,$bfd000	;no paper
+	bne.L	VeriPrt
+	move.l	DosBase,a6
+	move.l	#NameP,d1
+	move.l	#1006,d2
+	jsr	-30(a6)
+	move.l	d0,PrtH
+	beq.s	DisWaR
+	move.l	ScrP,a0
+	lea	Scr,a1
+	moveq	#15,d2
+DisPLp2:moveq	#63,d1
+DisPLp:	move.b	(a1)+,(a0)+
+	dbf	d1,DisPLp
+	move.b	#10,(a0)+
+	dbf	d2,DisPLp2
+	move.l	DosBase,a6
+	move.l	PrtH,d1
+	move.l	#ScrPrt,d2
+	move.l	#ScrPrE-ScrPrt,d3
+	jsr	-48(a6)
+	move.l	DosBase,a6
+	move.l	PrtH,d1
+	move.l	ScrP,d2
+	move.l	#1040,d3
+	jsr	-48(a6)
+	move.l	#UvkPrt,d2
+	bsr.L	EcriClr
+	bsr.L	Wait
+	move.l	Prth,d1
+	jsr	-36(a6)
+	rts
+VeriPrt:move.l	#VerifPT,d2
+	bsr.L	EcriClr
+	bsr.L	Wait
+	rts
+
+DisRam:	move.l	#File2,d5
+	move.l	#50,d3
+	move.l	#DisRamt,d6
+	bsr.L	GetName
+
+	lea	File2,a0
+	lea	ValList,a1
+	moveq	#0,d0
+A2HLp:	moveq	#0,d1
+	moveq	#0,d2
+	move.b	(a0)+,d1
+	beq.s	EndA2H
+NLp:	cmp.b	0(a1,d2.l),d1	;"0"
+	blo.s	err
+	cmp.b	1(a1,d2.l),d1	;"9"
+	bhi.s	nextch
+	sub.b	2(a1,d2.l),d1
+	or.l	d1,d0
+	lsl.l	#4,d0
+	bra.s	A2HLp
+EndA2H:	lsr.l	#4,d0
+	move.l	d0,a0
+	beq.s	EDisRam
+	bsr.L	Displ2
+EDisRam:rts
+
+NextCh:	addq	#3,d2		;A-F
+	cmpi	#9,d2
+	bne.s	NLp
+Err:	moveq	#-1,d0
+	rts
+Vallist:dc.b	"0","9",$30,"A","F",55,"a","f",87
+even
+nextdrs:lea	drs,a0
+	bsr.s	nextdr
+	bra.s	txtdr
+nextdrd:lea	drd,a0
+	bsr.s	nextdr
+txtdr:	lea	drtxt,a0
+	move.b	drs,d0
+	add.b	#$30,d0
+	move.b	drd,d1
+	add.b	#$30,d1
+	move.b	d0,10(a0)
+	move.b	d1,16(a0)
+	lea	inst,a0
+	move.b	d1,28(a0)
+	lea	sout,a0
+	move.b	d0,20(a0)
+	lea	dest,a0
+	move.b	d1,25(a0)
+	clr.l	d0
+endndr:	rts
+
+nextdr:	moveq	#0,d0
+	lea	drivec,a1
+	move.b	(a0),d0	
+seandr:	add.b	#1,d0
+	cmp.b	#4,d0
+	bne.s	nolastd
+	moveq	#0,d0
+nolastd:tst.b	0(a1,d0)
+	beq.s	seandr	
+	move.b	d0,(a0)
+endnd:	rts
+
+Copy:	tst.b	AutoF
+	bne.s	EndCop
+	move.l	#Sout,d2
+	bsr.L	EcriClr
+	bsr.L	Waitret
+	bsr.L	Readtrk
+	bne.s	Endcop
+	move.l	#Dest,d2
+	bsr.L	EcriClr
+	bsr.L	Waitret
+	bsr.L	Writeb
+EndCop:	rts
+
+Check:	moveq	#0,d2
+	bsr.L	Chkboot
+	tst.l	d2		
+	bne.L	Endchk
+	move.l	#50,d2
+	move.l	Buffer,a0
+	lea	VirList,a1
+VirLp:	move.l	(a1),d0
+	move.l	0(a0,d0.l),d1
+	cmp.l	4(a1),d1
+	bne.s	NoVir
+	move.l	4(a0,d0.l),d1
+	cmp.l	8(a1),d1	
+	bne.s	NoVir
+	move.l	#cls2,d2
+	bsr.L	EcriClr
+	bsr.L	Orange
+	move.l	$c(a1),d2
+	bsr.L	ecrire2
+	bsr.L	Normal
+	move.l	#Detect,d2
+	bsr.L	Ecrire2
+	cmp.l	#Target,$c(a1)
+	bne.s	Killv
+	move.l	Buffer,a2
+	add.l	#$1ac,a2
+	move.b	(a2)+,d0
+	lea	File2,a3
+	move.b	#$22,(a3)+
+	subq	#1,d0
+TargLp:	move.b	(a2)+,(a3)
+	not.b	(a3)+
+	dbf	d0,TargLp
+	move.b	#$22,(a3)+
+	move.b	#-1,(a3)
+	move.l	#File2,d2
+	bsr.L	Ecrire2
+	bra.s	Killv
+	rts
+Novir:	add.l	#16,a1
+	tst.l	(a1)
+	bne.L	virlp
+	move.l	#UnkT,D2
+	bsr.L	EcriClr
+	bsr.L	Wait
+	moveq	#0,d0
+	rts
+Killv:	move.l	#Kilt,d2
+	bsr.L	Ecrire2
+Waitk:	bsr.L	keyread
+	cmp.b	#"e",d0
+	beq.s	endchk	
+	cmp.b	#"E",d0
+	beq.s	endchk
+	cmp.b	#"k",d0
+	beq.s	killvir
+	cmp.b	#"K",d0
+	bne.s	WaitK
+killvir:bsr.s	ClrBuf
+	lea	KillB,a0
+	bsr.s	CopBoot
+	bsr.s	BuildB
+	tst.b	AutoF
+	bne.s	EndChk2
+	bsr.L	OpenDrs
+	bsr.L	WritB
+EndChk:	moveq	#0,d0
+	rts
+EndChk2:moveq	#-1,d0
+	rts
+
+;Efface buffer et prepare boot
+ClrBuf:	move.l	Buffer,a2
+	move.l	a2,a1
+	move.w	#1023,d0
+ClrBLp:	clr.b	(a1)+
+	dbf	d0,ClrBLp	
+	move.l	#"DOS.",(a2)
+	move.b	#0,3(a2)
+	move.l	#880,8(a2)
+	add.l	#12,a2	;(a2) buffer+12
+	rts
+
+;Copie boot code
+CopBoot:move.w	(a0)+,(a2)+ ;(a0) ptr Bootcode
+	cmp.w	#$4e71,(a0) ;(a2) ptr Buffer
+	bne.s	CopBoot
+	rts
+
+;copie FindResident et calcule Chksum
+BuildB:	lea	NormB,a0
+	bsr.s	CopBoot
+DoSum:	move.l	Buffer,a0
+	lea	4(a0),a1
+	clr.l	(a1)
+	move.w	#$ff,d1
+	moveq	#0,d0
+BChkSLp:add.l	(a0)+,d0
+	bcc.s	BJump
+	add.l	#1,d0
+BJump:	dbf	d1,BChkSLp
+	not.l	d0
+	move.l	d0,(a1)
+	rts
+
+Create:	move.L	#Inst,D2
+	bsr.L	Ecrire2
+	bsr.L	Keyread
+
+	cmp.l	#$d,d0
+	beq.s	MakeBB
+	cmp.l	#"8",d0
+	beq.L	EndCrea
+	cmp.l	#"d",d0
+	beq.s	CreChgD
+	cmp.l	#"D",d0
+	beq.s	CreChgD
+
+	lea	CreatLi-12,a0
+	lea	Inst2,a1
+CreaLp:	add.l	#12,a0
+	tst.l	(a0)
+	beq.s	Create
+	cmp.l	(a0),d0
+	bne.s	CreaLp
+	sub.l	#$31,d0
+SeCreR:	cmp.b	#$a,(a1)+
+	bne.s	SeCreR
+	dbf	d0,SeCreR
+	tst.l	4(a0)
+	bne.s	FuncOff
+	move.l	#-1,4(a0)
+	move.b	#"*",3(a1)
+	bra.s	Create
+FuncOff:move.l	#0,4(a0)
+	move.b	#" ",3(a1)
+	bra.s	Create
+CreChgD:bsr.L	NextDrd
+	bra.L	Create
+
+MakeBB:	clr.b	CrFlag
+	bsr.L	ClrBuf
+	lea	CreatLi,a3
+MaBBLp:	tst.l	4(a3)
+	beq.s	NoSelFu
+	move.b	#1,CrFlag
+	move.l	8(a3),a0
+
+	cmp.l	#MakePal,a0
+	bne.s	NMakeP
+	bsr.L	Request
+	tst.w	Border
+	bne.s	NMakeP
+	move.l	a0,-(a7)
+	moveq	#30,d3		;getname
+	move.l	#MakPT,d6
+	move.l	#MakPB,d5
+	bsr.L	GetName
+	lea	MakPB,a1	;amigados ?
+	tst.b	(a1)
+	bne.s	NoMakeP
+	lea	AmiDos,a0
+	moveq	#7,d0
+CAmiDLp:move.b	(a0)+,(a1)+
+	dbf	d0,CAmiDLp
+NoMakeP:move.l	(a7)+,a0
+NMakeP:
+	bsr.L	CopBoot
+NoSelFu:add.l	#12,a3
+	tst.l	(a3)
+	bne.s	MaBBLp
+
+	tst.b	CrFlag
+	beq.s	NoPub
+	moveq	#39,d0
+	lea	CreaPub,a0
+	bsr.L	CopBoot
+NoPub:	bsr.L	BuildB
+	bsr.L	WriteB
+	bra.L	Create
+EndCrea:rts
+
+;routines disquettes
+Protect:move.l	4.w,a6
+	lea	Diskioreq,a1
+	move.w	#15,28(a1)
+	jsr	-456(a6)
+	lea	Diskioreq,a1
+	tst.l	32(a1)
+	beq.s	OkProt
+ProMsg:	move.l	#Protxt,d2
+	bsr.L	EcriClr
+	bsr.L	Wait
+	moveq	#1,d0
+OkProt:	rts
+
+Drive:	moveq	#0,d0
+	move.l	4.w,a6
+	lea	Diskioreq,a1
+	move.w	#14,28(a1)
+	jsr	-456(a6)
+	lea	Diskioreq,a1
+	tst.l	32(a1)
+	beq.s	OkDk
+NDIDr:	move.l	#Ndktxt,d2
+	bsr.L	EcriClr
+	bsr.L	Wait
+	moveq	#1,d0
+OkDk:	rts
+
+Readtrk:bsr.L	Opendrs
+ReadT:	bsr.s 	Drive
+	bne.S	EndTrk
+	move.l	4.w,a6
+	lea	Diskioreq,a1
+	move.w	#2,28(a1)
+	move.l	#1024,36(a1)
+	move.l	buffer,40(a1)
+	move.l	#0,44(a1)
+	jsr	-456(a6)
+	tst.l	d0
+	beq.s 	okread2
+	rts
+OkRead2:bsr.L	motor
+	moveq	#0,d0
+EndTrk:	rts	
+
+Writeb:	bsr.L	Opendrd
+Writb:	bsr.L	Drive
+	bne.s	Endwrit
+	bsr.L	Protect
+	bne.s	Endwrit
+	move.l	4.w,a6
+	lea	Diskioreq,a1
+	move.w	#3,28(a1)
+	move.l	#1024,36(a1)
+	move.l	Buffer,40(a1)
+	move.l	#0,44(a1)
+	jsr	-456(a6)
+
+	move.w	#4,28(a1)
+	move.l	#1024,36(a1)
+	move.l	buffer,40(a1)
+	move.l	#0,44(a1)
+	jsr	-456(a6)
+	bsr.L	Motor
+	moveq	#0,d0
+	rts
+Endwrit:rts
+
+Motor:	move.l	4.w,a6
+	lea	Diskioreq,a1
+	move.w	#9,28(a1)
+	clr.l	36(a1)
+	jsr	-456(a6)
+	rts
+
+MoveSub:tst.b	AutoF
+	bne.s	EndMSub
+	Move.l	#MoveT,D2
+	bsr.l	Ecrire2
+MovSub:	bsr.L 	Keyread
+	cmp.b	#"1",d0
+	beq.L	Record
+	cmp.b	#"2",d0
+	beq.L	Load
+	cmp.b	#"d",d0
+	beq.s	chdrm
+	cmp.b	#"D",d0
+	beq.s	chdrm
+	cmp.b	#"s",d0
+	beq.s	chdrm
+	cmp.b	#"S",d0
+	beq.s	chdrm
+	bra.s	t3m
+chdrm:	lea	Drm,a0
+	bsr.L	NextDr
+	move.b	Drm,d0
+	add.b	#$30,d0
+	lea	MoveT,a0
+	move.b	d0,25(a0)
+	lea	SouTM,a0
+	move.b	d0,20(a0)
+	lea	DesTM,a0
+	move.b	d0,25(a0)
+	bra.s	MoveSub
+T3m:	cmp.l	#"3",d0
+	bne.s	MovSub
+EndMSub:rts		
+	
+Record:	move.l	#SouTM,d2
+	bsr.L	EcriClr
+	bsr.L	WaitRet
+	clr.l	d0
+	move.b	Drm,d0
+	bsr.L	OpenDr
+	bsr.L	ReadT
+	bne.L	EndRec
+	move.l	#Des,d2
+	bsr.L	EcriClr
+	bsr.L	WaitRet
+	bsr.L	VerD0W
+	bne.s	EndRec
+	move.l	#Cls,d2
+	bsr.L	Ecrire2
+	move.l	#50,d3
+	move.l	#NameT,d6
+	move.l	#File2,d5
+	bsr.L	Getname
+	bsr.L	WritPrg
+	bne.s	EndRec
+EndRec:	bra.L	MoveSub
+
+Load:	clr.b	NotFound
+ 	move.l	#Sou,d2	
+	bsr.L	EcriClr
+	bsr.L	WaitRet
+	bsr.L	VerD0R
+	bne.s	EndLd
+	move.l	#Cls,d2
+	bsr.L	Ecrire2
+	move.l	#50,d3
+	move.l	#NameT,d6
+	move.l	#File2,d5
+	bsr.L	Getname
+	bsr.L	ReadPrg
+	bne.s	EndLd
+	move.l	#DesTM,d2
+	bsr.L	EcriClr
+	bsr.L	WaitRet
+	clr.l	d0
+	move.b	Drm,d0
+	bsr.L	OpenDr
+	bsr.L	WritB
+	bne.s	EndLd
+EndLd:	bra.L	MoveSub
+
+WritPrg:move.l	Dosbase,a6
+	move.l	#File2,d1
+	move.l	#1006,d2
+	jsr	-30(a6)		;open
+	move.l	d0,IBoot
+	beq.s	EndWrP
+	move.l	d0,d1
+	move.l	Buffer,d2
+	move.l	#1024,d3
+	jsr	-48(a6)		;write
+	move.l	IBoot,d1
+	jsr	-36(a6)		;close
+	moveq	#0,d0
+EndWrP:	rts
+
+Readprg:move.l	Dosbase,a6
+	move.l	#File2,d1
+	move.l	#1005,d2
+	jsr	-30(a6)		;open
+	move.l	d0,iboot
+	beq.s	EndRdP
+	move.l	d0,d1
+	move.l	buffer,d2
+	move.l	#1024,d3
+	jsr	-42(a6)		;read
+	move.l	iboot,d1
+	jsr	-36(a6)		;close
+	moveq	#0,d0
+	rts
+EndRdP:	move.l	#NotFt,d2
+	bsr.L	EcriClr
+	bsr.L	wait	
+	moveq	#-1,d0
+	rts
+
+Request:movem.l	a0-a3,-(a7)
+	move.l	Conhandle,d7
+	move.l	Dosbase,a6
+	move.l	#Name3,d1
+	move.l	#1005,d2
+	jsr	-30(a6)
+	move.l	d0,Winhandle
+	move.l	d0,Conhandle
+	move.l	#BordT,d2
+	bsr.L	Ecrire2
+GetKRe:	bsr.L	KeyRead
+	cmp.b	#"y",d0
+	beq.s	BordY
+	cmp.b	#"Y",d0
+	beq.s	BordY
+	cmp.b	#"N",d0
+	beq.s	BordN
+	cmp.b	#"n",d0
+	beq.s	BordN
+	bra.s	GetKRe
+BordN:	move.w	#1,Border
+BordY:	move.l	Winhandle,d1
+	move.l	Dosbase,a6
+	jsr	-36(a6)
+	move.l	d7,Conhandle
+	movem.l	(a7)+,a0-a3
+	rts
+
+GetName:move.l	d5,a0	;d6=text/d3=max len/d5=buffer
+	move.l	d3,d0
+	subq	#1,d0
+GetNCLp:clr.b	(a0)+
+	dbf	d0,GetNCLp
+	move.l	Conhandle,d7
+	move.l	Dosbase,a6
+	move.l	#Name2,d1
+	move.l	#1005,d2
+	jsr	-30(a6)
+	move.l	d0,Winhandle
+	move.l	d0,Conhandle
+GetNLp:	move.l	d6,d2
+	bsr.L	Ecrire2
+	move.l	d5,d2
+	move.l	Winhandle,d1
+	jsr	-42(a6)
+	cmp.l	d3,d0
+	bhi.s	GetNLp
+	move.l	d5,a0
+SRetLp:	cmp.b	#$a,(a0)+
+	bne.s	SRetLp
+	clr.b	-1(a0)
+	move.l	Winhandle,d1
+	jsr	-36(a6)
+	move.l	d7,Conhandle
+	move.l	#CurOff,d2
+	bsr.L	Ecrire2
+	rts
+
+VerD0W:	tst.b	FlagDr
+	bne.s	PluDr
+	bsr.L	Protect
+	bne.s	VerD0E
+VerD0R:	tst.b	FlagDr
+	bne.s	PluDr
+	bsr.L	Drive
+	bne.s	VerD0E
+PluDr:	moveq	#0,d0
+VerD0E:	rts
+
+WaitRet:bsr.L	keyread
+	cmp.l	#$0d,d0
+	bne.s	waitRET
+	rts
+
+Info:	lea	InfoList,a5
+InfoLp:	tst.l	(a5)
+	beq.s	EndInfo
+	move.l	(a5),d2
+	bsr.L	Ecrire2
+InfWK:	bsr.S	KeyRead
+	cmp.l	#$d,d0
+	beq.s	InfNxt
+	cmp.l	#"i",d0
+	bne.s	NInfI1
+	bsr.L	Amiguy
+NInfi1:	cmp.l	#"I",d0
+	bne.s	NInfI2
+	bsr.L	Amiguy
+NInfi2:	cmp.l	#"k",d0
+	bne.s	NKeyP1
+	bsr.L	KeyPage
+NKeyP1:	cmp.l	#"K",d0
+	bne.s	InfoLp
+	bsr.L	KeyPage
+	bra.s	InfoLp
+InfNxt:	addq	#4,a5
+	bra.s	InfoLp
+EndInfo:rts
+
+InfoList:dc.l	InfT,InfT2,InfT3,0
+
+Wait:	moveq	#50,D1
+Wait2:	move.l	Dosbase,a6
+	jsr	-198(a6)
+	rts
+KeyRead:moveq	#0,d0
+	move.l	Dosbase,a6
+	move.l	Conhandle,d1
+	move.l	#Buf,d2
+	moveq	#1,d3
+	jsr	-42(a6)
+	lea	Buf,a0
+	move.b	(a0),d0
+	rts
+
+;routines test memoire
+RamChk2:move.l	#ramct,d2
+	lea	ramlist,a0
+ramclp:	move.l	4.w,a6	
+	add.l	(a0),a6
+	move.l	(a6),a1
+	cmp.l	#$0,a1
+	beq.s	novram
+	sub.l	4(a0),a1
+	move.l	a1,a5
+	add.l	12(a0),a1
+	move.l	(a1),d0
+	cmp.l	8(a0),d0
+	bne.s	novram
+	tst.l	16(a0)
+	beq.s	noksub
+	move.l	16(a0),a2
+	jsr	(a2)
+noksub:	move.b	#1,AllRight
+	cmp.l	#ramct,d2
+	bne.s	nfirst	
+	move.l	#ramct,d2
+	bsr.L	ecrire2			
+nfirst:	bsr.L	orange
+	move.l	20(a0),d2
+	bsr.L	ecrire2
+	bsr.L	normal
+	move.l	#found,d2
+	bsr.L	ecrire2
+	move.l	#locate,d2
+	bsr.L	ecrire2
+	move.l	a5,d0
+	bsr.L	conv
+	move.l	#convtxt+2,d2
+	bsr.L	ecrire2
+novram:	add.l	#24,a0
+	tst.l	(a0)
+	bne.L	ramclp
+Endramc:move.l	irqopenlib,a0
+	cmp.l	#" IRQ",-816(A0)
+	bne.s	endirqc
+	bsr.L	orange
+	move.l	#IRQ,d2
+	bsr.L	ecrire2
+	bsr.L	normal
+	move.l	#found,d2		
+	bsr.L	ecrire2
+	move.l	#locate,d2
+	bsr.L	ecrire2
+	move.l	IrqAdr,d0
+	bsr.L	conv
+	move.l	#convtxt+2,d2
+	bsr.L	ecrire2
+endirqc:tst.b	XenoF
+	beq.s	EndRChk2
+	bsr.L	orange
+	move.l	#Xeno,d2
+	bsr.L	ecrire2
+	bsr.L	normal
+	move.l	#found,d2		
+	bsr.L	ecrire2
+	move.l	#locate,d2
+	bsr.L	ecrire2
+	move.l	XenoAdr,d0
+	bsr.L	conv
+	move.l	#convtxt+2,d2
+	bsr.L	ecrire2
+EndRChk2:rts
+
+lam2k:	move.l	#$600001d8,$17c(a5)	;routines ramkillvirus
+	rts
+lam3k:	move.l	#$60000210,$164(a5)
+	rts
+lam1k:	move.l	#$600001c6,$17c(a5)
+	rts
+lam4k:	move.l	#$600001c6,$178(a5)
+	rts
+lam5k:	move.l	#$600001bc,$18c(a5)
+	rts
+dokk:	move.w	#$4e75,$2ac(a5)
+	move.b	#$f9,$151(a5)
+	rts
+gadk:	move.b	#$8c,343(a5)
+	rts
+revk:	move.w	#$600a,$1e8(a5)
+	rts
+gxtk:	move.w	#$4e75,$35c(a5)
+	rts
+nnamk:	move.w	#$4e75,$1f4(a5)
+	rts
+
+ResChk2:clr.b	firstf
+	move.l	#250,d2
+	move.l	4.w,a6
+	tst.l	46(a6)
+	beq.s	okcool
+	move.b	#1,firstf
+	move.l	#resid,d2
+	bsr.L	ecrire2
+	move.l	#coolt,d2
+	bsr.L	ecrire2
+	move.l	4.w,a6
+	move.l	46(a6),d0
+	bsr.L	conv
+	move.l	#convtxt+2,d2
+	bsr.L	ecrire2
+okcool:	move.l	4.w,a6
+	tst.l	42(a6)	
+	beq.s	okcold
+	tst.b	protector
+	bne.s	noccold
+noccold:tst.b	firstf
+	bne.s	rf1
+	move.b	#1,firstf
+	move.l	#resid,d2
+	bsr.L	ecrire2
+rf1:	move.l	#coldt,d2
+	bsr.L	ecrire2
+	move.l	4.w,a6
+	move.l	42(a6),d0
+	bsr.L	conv
+	move.l	#convtxt+2,d2
+	bsr.L	ecrire2
+okcold:	tst.b	protector
+	bne.s	nocco
+	move.l	4.w,a6	
+	clr.l	46(a6)
+	clr.l	42(a6)
+	lea	34(a6),a0
+	clr.w	d0	
+	moveq	#$17,d1
+coollp:	add.w	(a0)+,d0
+	dbf	d1,coollp
+	not.w	d0
+	move.w	d0,(a0)
+nocco:	move.l	4.w,a6
+	tst.l	550(a6)
+	beq.L	coolend
+	tst.b	firstf
+	bne.s	rf2
+	move.b	#1,firstf
+	move.l	#resid,d2
+	bsr.L	ecrire2
+rf2:	move.l	#kicktt,d2
+	bsr.L	ecrire2
+	move.l	4.w,a6
+	move.l	550(a6),d0
+	bsr.L	conv
+	move.l	#convtxt+2,d2
+	bsr.L	ecrire2	
+	tst.b	protector
+	bne.s	coolend
+	move.l	4.w,a6
+	clr.l	546(a6)
+	clr.l	550(a6)
+	jsr	-612(a6)
+	move.l	d0,554(a6)
+	tst.b	protector
+	beq.s	prokill
+	tst.b	firstf
+	bne.s	coolend
+prokill:tst.b	PCmd
+	bne.s	CoolCmd
+	move.l	#CooT,D2
+	bsr.l	Ecrire2
+	bra.s	CoolEnd
+CoolCmd:move.l	#CoolCT,d2
+	bsr.L	Ecrire3
+	bra.s	CoolEnd
+coolend:rts
+
+ProChk2:tst.b	PCmd
+	beq.s	NoPrCd
+	lea	ClrProT,a0
+PrCPrL:	cmp.b	#-1,(a0)+
+	bne.s	PrCPrL
+	move.b	#" ",-2(a0)
+NoPrCd:	move.b	#1,protector
+	lea	prolist,a1
+prolp:	move.l	4.w,a6
+	move.l	(a1),d0
+	add.l	d0,a6
+	move.l	(a6),a4
+	move.l	4(a1),d0
+	move.l	0(a4,d0.l),d1
+	cmp.l	8(a1),d1
+	bne.s	noprot2
+	move.l	#resct,d2
+	bsr.L	ecrire2
+	bsr.L	orange
+	move.l	12(a1),d2
+	bsr.L	ecrire2
+	bsr.L	normal
+	move.l	#detmem,d2
+	bsr.L	ecrire2
+	bsr.S	clrpro
+	rts
+noprot2:add.l	#16,a1
+	tst.l	(a1)
+	bne.s	prolp
+	clr.b	protector
+	rts
+clrpro:	move.l	#clrprot,d2
+	bsr.L	ecrire2
+CLRLP:	bsr.L	keyread
+	cmp.l	#-1,d0
+	beq.s	clrpro
+	cmp.b	#"c",d0
+	beq.s	effpro
+	cmp.b	#"C",d0
+	beq.s	effpro
+	bra.S	tkk	
+effpro:	clr.b	protector	
+	rts
+tkk:	cmp.b	#"k",d0
+	beq.s	endp
+	cmp.b	#"K",d0	
+	beq.s	endp
+	bra.s	clrlp
+endp:	rts
+
+DosVec:	move.l	#250,d2
+	move.l	#-220,d5
+	move.l	Dosbase,a6
+DosCLp:	lea	0(a6,d5.l),a0
+	lea	XenAdr,a4
+	moveq	#2,d0
+XenALp:	move.l	(a4)+,a1
+	add.l	#2,a1
+	cmp.l	a0,a1	
+	beq.s	XenErr
+	dbf	d0,XenALp
+	move.l	0(a6,d5.l),d3
+	and.l	#$ff000000,d3
+	cmp.l	#$60000000,d3
+	beq.s	DosVOk
+XenErr:	cmp.l	#250,d2
+	bne.s	PontDos
+	move.l	#DosChk,d2
+	bsr.L	Ecrire2
+PontDos:move.l	#CorVec,d2
+	bsr.L	Ecrire2
+	lea	0(a6,d5.l),a0
+	move.l	a0,d0
+	sub.l	#2,d0
+	bsr.L	Conv
+	move.l	#Convtxt+2,d2
+	moveq	#6,d3
+	bsr.L	Ecrire
+	move.l	d5,d0
+	sub.l	#2,d0
+	neg.l	d0
+	lea	DosbTN+11,a0
+	bsr.L	Conv2
+	move.l	#DosbTN,d2
+	bsr.l	Ecrire2
+DosVOk:	add.l	#6,d5
+	cmp.l	#2,d5
+	bne.L	DosCLp
+DosCErr:rts
+
+Intvec: move.l	#250,d2
+	moveq	#0,d3
+	move.b	#$31,d4
+	move.l	#$64,a2
+intvclp:move.l	(a2),d1
+	cmp.l	#$fc0000,d1
+	bhi.s	okintv
+	cmp.l	#250,d2
+	bne.s	nfintv
+	move.l	#intvt,d2
+	bsr.L	Ecrire2
+nfintv:	lea	intlevt+17,a1
+	move.b	d4,(a1)
+	move.l	#intlevt,d2	
+	bsr.L	ecrire2
+	move.l	(a2),d0
+	bsr.L	conv
+	move.l	#convtxt+2,d2
+	bsr.L	ecrire2
+okintv:	add.b	#1,d4
+	add.l	#4,a2
+	cmp.l	#$80,a2
+	bne.s	intvclp
+endint:	rts
+
+IoVect:	move.l	4.w,a6
+	lea	350(a6),a0
+	lea	Trkdisk,a1
+	jsr	-276(a6)
+	move.l	d0,Iodevice
+	move.l	d0,a0
+	move.l	-28(a0),d0
+	cmp.l	#$fc0000,d0
+	bhi.s	OkBegIo
+	move.l	#BegIoT,d2
+	bsr.L	Ecrire2
+	move.l	-28(a0),d0
+	bsr.L	Conv
+	move.l	#ConvTxt+2,d2
+	bsr.L	Ecrire2
+
+Okbegio:move.l	Iodevice,a0
+	move.l	-10(a0),d0
+	cmp.l	#$fc0000,d0
+	bhi.s	OkCloIo
+	move.l	#CloIoT,d2
+	bsr.L	Ecrire2
+	move.l	-10(a0),d0
+	bsr.L	Conv
+	move.l	#ConvTxt+2,d2
+	bsr.L	Ecrire2
+
+OkCloIo:move.l	Iodevice,a0
+	add.l	#140,a0		;console device
+	move.l	(a0),a0
+	move.l	-28(a0),d0
+	cmp.l	#$fc0000,d0
+;	bhi.s	OkBegIo2
+	move.l	#BegIoT2,d2
+	bsr.L	Ecrire2
+	move.l	-28(a0),d0
+	bsr.L	Conv
+	move.l	#ConvTxt+2,d2
+	bsr.L	Ecrire2
+OkbegIo2:rts
+
+Rastchk:move.l	4.w,a6
+	move.l	$90(a6),a1
+	move.l	(a1),a1
+	lea	$12(a1),a0
+	move.l	a0,Raster
+	move.l	(a0),d0
+	cmp.l	#$fc0000,d0
+	bhi.s	EndRast
+	move.l	#RastT,d2
+	bsr.L	Ecrire2
+	move.l	(a0),d0
+	bsr.L	Conv
+	move.l	#ConvTxt+2,d2
+	bsr.L	Ecrire2
+EndRast:rts
+
+ExbaseC:move.l	#251,d2
+	move.l	#-634,d4
+ExecBC:	move.l	4.w,a6
+	add.l	#6,d4
+	cmp.l	#2,d4
+	beq.L	EndExBC
+	move.l	0(a6,d4.l),d1
+	cmp.l	#$fc0000,d1
+	bhi.s	ExecBC
+	lea	ExcExb,a0
+ExcExLp:cmp.l	(a0)+,d4
+	beq.s	ExecBC
+	tst.l	(a0)
+	bne.s	ExcExLp	
+	cmp.l	#251,d2
+	bne.s	NoLigne
+	move.l	#exboct,d2
+	bsr.L	Ecrire2	
+	clr.b	exoflag
+Noligne:move.l	4.w,a6
+	move.l	d4,d0
+	neg.l	d0
+	add.l	#2,d0	
+	move.l	#ExecbTn+14,a0
+	bsr.L	Conv2
+	move.l	0(a6,d4),d0
+	bsr.L	Conv
+	move.l	#ExecbTN,d2	
+	bsr.L	Ecrire2
+	move.l	#Convtxt+2,d2
+	bsr.L	Ecrire2
+	bra.L	ExecBC
+EndExBC:rts
+
+IntuiC:	move.l	#253,d2
+	move.l	#-472,d4
+IntBC:	move.l	Intuibase,a6
+	add.l	#6,d4
+	cmp.l	#2,d4
+	beq.L	EndIntC
+	move.l	0(a6,d4.l),d1
+	cmp.l	#$fc0000,d1
+	bhi.s	IntBC
+	move.b	#1,allright
+	cmp.l	#253,d2
+	bne.s	NoLign
+	move.l	#IntChk,d2
+	bsr.L	Ecrire2	
+NoLign:	move.l	Intuibase,a6
+	move.l	d4,d0
+	neg.l	d0
+	add.l	#2,d0	
+	move.l	#IntbTn+14,a0
+	bsr.L	Conv2
+	move.l	0(a6,d4),d0
+	bsr.L	Conv
+	move.l	#IntbTN,d2	
+	bsr.L	Ecrire2
+	move.l	#Convtxt+2,d2
+	bsr.L	Ecrire2
+	bra.L	IntBC
+EndIntC:rts
+
+ExbIChk:move.l	#254,d2
+	move.l	#88,d4
+inteclp:move.l	4.w,a6
+	move.l	0(a6,d4),d1	
+	tst.l	d1
+	beq.s	noalti
+	cmp.l	#$fc0000,d1
+	bhi.s	noalti
+	cmp.l	#254,d2
+	bne.s	pasretu
+	move.l	#exbict,d2
+	bsr.L	ecrire2
+pasretu:move.w	d4,d0
+	move.l	#execbtp+14,a0
+	bsr.L	conv2
+	move.l	#execbtp,d2
+	bsr.L	ecrire2
+	move.l	4.w,a6
+	move.l	0(a6,d4),d0
+	bsr.s	conv
+	move.l	#convtxt+2,d2
+	bsr.L	ecrire2
+noalti:	add.l	#12,d4
+	cmp.l	#280,d4
+	bne.s	inteclp
+inteend:rts
+
+conv:	move.l	a0,-(a7)
+	move.l	#convtxt,a0
+	move.l	#7,d1
+clconlp:move.b	#$30,(a0)+
+	dbf	d1,clconlp
+	move.l	#convtxt,a0
+	MOVE.L	#7,D1
+conlp:	ROL.L	#4,D0
+	MOVE.L	D0,D2
+	AND.B	#15,D0
+	CMP.B	#9,D0
+	BLE.S	conch
+	ADDQ.B	#7,D0
+conch:	ADD.B	#$30,D0
+	MOVE.B	D0,(A0)+
+	MOVE.L	D2,D0
+	DBRA	D1,conlp
+	move.l	(a7)+,a0
+	RTS	
+normal:	move.l	#normalt,d2
+	bsr.L	ecrire2
+	rts
+orange:	move.l	#oranget,d2
+	bsr.L	ecrire2
+	rts
+
+conv2:	addq	#1,a0
+	divu	#100,d0
+	add.b	#$30,d0
+	move.b	d0,(a0)+
+	clr.w	d0
+	swap	d0
+	divu	#10,d0
+	add.b	#$30,d0
+	move.b	d0,(a0)+
+	clr.w	d0
+	swap	d0
+	add.b	#$30,d0
+	move.b	d0,(a0)+
+	rts
+
+conv3:	divu	#1000,d0 ;a0/d0
+	add.b	#$30,d0
+	move.b	d0,(a0)+
+	clr.w	d0
+	swap	d0
+	divu	#100,d0
+	add.b	#$30,d0
+	move.b	d0,(a0)+
+	clr.w	d0
+	swap	d0
+	divu	#10,d0
+	add.b	#$30,d0
+	move.b	d0,(a0)+
+	clr.w	d0
+	swap	d0
+	add.b	#$30,d0
+	move.b	d0,(a0)+
+	rts
+
+;-------- Bootblocks --------
+KillB:	bra.s	EKillB
+	dc.b	">Here lies a virus. It was killed in cold blood"
+	dc.b	" by UVK 1.22<"
+EKillB:	nop
+
+NormB:	lea	DosName(pc),a1
+	jsr	-96(a6)
+	tst.l	d0
+	beq.s	NormErr
+	move.l	d0,a0
+	move.l	22(a0),a0
+	moveq	#0,d0
+ENorm:	rts
+NormErr:moveq	#-1,d0
+	bra.s	ENorm
+DosName:dc.b	"dos.library",0
+	nop
+
+LedOff:	bra.s	ContLed
+	dc.b	">Led off<",0
+ContLed:bset	#1,$bfe001
+	nop
+
+Cleaner:bra.L	ContCl
+	dc.b	">Ram Cleaner<",0
+Kill:	move.l	d7,$180(a5)
+	moveq	#50,d3
+WVbl1:	cmp.b	#$f0,$6(a5)
+	bne.s	WVbl1
+WVbl2:	cmp.b	#$ff,$6(a5)
+	bne.s	WVbl2
+	dbf	d3,WVbl1
+	not.l	$24(a6)
+	movem.l	(a7)+,d0-d7/a0-a6
+	move.l	#$fc00d2,$80
+	trap	#0
+	rts
+ExecExc:dc.w	-550,-448,-442,-436,-412,-400,-196
+ContCl:	movem.l	d0-d7/a0-a6,-(a7)
+	move.l	$4.w,a6
+	lea	$dff000,a5
+	move.l	#$f000f00,d7
+	tst.l	42(a6)
+	bne.s	Kill
+	tst.l	46(a6)
+	bne.s	Kill
+	tst.l	546(a6)
+	bne.s	Kill
+	tst.l	550(a6)
+	bne.s	Kill
+	moveq	#0,d2
+	move.w	#-634,d2
+	lea	ExecExc(pc),a0
+ExecLp:	addq.w	#6,d2
+	cmp.w	(a0),d2
+	bne.s	ExecNEx
+	addq.l	#2,a0
+	bra.s	ExecLp
+ExecNEx:move.l	0(a6,d2.w),d1
+	cmp.l	#$fc0000,d1
+	blo.L	Kill
+	cmp.w	#-4,d2
+	bne.s	ExecLp
+	lsr.l	#3,d7
+	move.l	d7,$180(a5)
+	movem.l	(a7)+,d0-d7/a0-a6
+	nop
+
+TestPal:bra.s	ContPal
+	dc.b	">Test Pal<"
+ContPal:move.l	4.w,a6
+	cmp.l	#$3c,530(a6)
+	bne.s	OkPal
+	move.l	#$fc00d2,$80
+	trap	#0
+	rts
+OkPal:	nop
+
+NoFMem:	bra.s	ContNF
+	dc.b	">NoFastMem<",0
+ContNF:	move.l	4.w,a6
+	move.l	#$20004,d1
+OkAlM:	jsr	-216(a6)
+	tst.l	d0
+	beq.s	OkAvM
+	jsr	-198(a6)
+	tst.l	d0
+	bne.s	OkAlM
+OkAvM:	nop
+
+NoEDr:	bra.s	ContNDr
+	dc.b	">No Drives<",0
+ContNDr:move.l	4.w,a6
+	lea	DiskRes(pc),a1
+	jsr	-498(a6)
+	tst.l	d0
+	beq.s	ErrNdr
+	move.l	d0,a0
+	lea	52(a0),a0
+	moveq	#-1,d0
+	move.l	d0,(a0)+
+	move.l	d0,(a0)+
+	move.l	d0,(a0)
+	bra.s	ErrNDr
+DiskRes:dc.b	"disk.resource",0
+ErrNDr:	nop
+
+NoBor:	bra.s	ContNBo
+	dc.b	">No Border<",0
+ContNBo:nop
+
+MakePal:bra.s	ContMP
+	dc.b	">Make Pal<"
+ContMP:	lea	Intuition(pc),a1
+	move.l	4.w,a6
+	clr.l	d0
+	jsr	-408(a6)
+	lea	Intbase(pc),a0
+	move.l	d0,(a0)
+	move.l	d0,a0
+	lea	OpenW+2(pc),a1
+	move.l	-202(a0),(a1)
+	move.l	#$10003,d1
+	move.l	#ENewOpW-NewOpW,d0
+	jsr	-198(a6)
+	move.l	d0,a1
+	lea	NewOpW(pc),a0
+	move.l	#ENewOpW-NewOpW,d1
+CopyLp:	move.b	(a0)+,(a1)+
+	dbf	d1,CopyLp
+	bsr.L	SetFunc
+	lea	Intbase(pc),a0
+	move.l	(a0),a1
+	jsr	-414(a6)
+	bra.L	ENewOpW
+NewOpW:	movem.l	d0-d7/a1-a6,-(a7)
+	move.l	a0,-(a7)
+	lea	OpenW+2(pc),a0
+	move.l	(a0),d0
+	bsr.s	SetFunc
+	move.l	(a7)+,a0
+NbLine:	move.w	#256,6(a0)
+	lea	MakPB(pc),a1
+	move.l	a1,26(a0)
+	lea	Border(pc),a3
+	tst.w	(a3)
+	beq.L	NoBord
+	clr.l	26(a0)
+	clr.l	14(a0)
+	move.b	#$18,16(a0)
+NoBord:	movem.l	(a7)+,d0-d7/a1-a6
+OpenW:	dc.w	$4ef9,0,0
+Intuition:dc.b	"intuition.library",0
+Intbase:dc.l	0
+Border:	dc.w	0
+MakPB:	dc.b	"AmigaDOS"
+	blk.b	22,0
+SetFunc:move.l	4.w,a6
+	lea	Intbase(pc),a0
+	move.l	(a0),a1
+	move.l	#-204,a0
+	jsr	-420(a6)	;Setfunc
+	rts
+ENewOpW:nop
+
+IrqPr:	bra.s	ContIrq
+	dc.b	">IRQ Protector<",0
+ContIrq:movem.l	d0-d7/a0-a6,-(a7)
+	move.l	$4.w,a6
+	moveq	#6,d0	
+	moveq	#1,d1
+	jsr	-198(a6)	;allocmem
+	move.l	d0,a0
+	beq.s	IrqErr
+	move.w	#$4ef9,(a0)+
+	move.l	-406(a6),(a0)
+	move.l	a6,a1
+	move.l	#-408,a0
+	jsr	-420(a6)	;setfunction
+IrqErr:	movem.l	(a7)+,d0-d7/a0-a6
+	nop
+
+CreaPub:bra.s	ContPub
+	dc.b	" >This Bootblock was created with UVK<  "
+ContPub:nop
+
+BootList:dc.l	$0c,$41fa0196,$0c506f6d,CCSB
+	dc.l	$64,$5c9e004a,$b0a0829c,NoExpan
+	dc.l	$20,$428741fa,$ffe8b1fc,Mem12
+	dc.l	$40,$0009001c,$4eaefe38,Girl
+	dc.l	$50,$48e7fffe,$337c0009,Ass
+	dc.l	$60,$02c000df,$f18033fc,Sys30
+	dc.l	$60,$0f9000df,$f18033fc,Sys40
+	dc.l	$398,$802c332e,$3020802c,Sys50
+	dc.l	$6c,$0226671a,$0cae0007,Sys51
+	dc.l   $1b0,$000000f0,$00f00000,Sys53
+	dc.l   $1b0,$0eca00f0,$00f00eca,Sys54
+	dc.l	$78,$2c780004,$42ae002e,Sys61
+	dc.l   $312,$fe384e75,$003000bf,Sys65
+	dc.l   $1b0,$0ca90000,$04000024,Sys64
+	dc.l	$0C,$43FA00F4,$4EAEFFA0,NoFast
+	dc.l	$24,$203c0000,$1f40223c,CoppV
+	dc.l	$0c,$0c6e0020,$00146f00,Random
+	dc.l	$0c,$43fa0136,$70004eae,XCopy
+	dc.l	$20,$42862a3c,$0027f000,Mem13
+	dc.l	$14,$48e7fffe,$237c0005,GxTNF
+	dc.l	$18,$00804e40,$46fc2700,BotCop
+	dc.l	$10,$4eba0036,$4cdf7fff,Avirex
+	dc.l	$14,$0004202e,$02260c80,VirTer
+	dc.l	$18,$000a0016,$66000036,VDC13
+	dc.l	$18,$000a0016,$662e6120,VDC16
+	dc.l	$60,$d0ae0032,$4a806600,VDC17
+	dc.l	$60,$7000202e,$002ed0ae,VDC20
+	dc.l	$02,$4b49,$0,Kick
+	dc.l	$10,$0,$0,NotIns
+	dc.l	$0c,$2c780004,$41fa00b2,Bootleg
+	dc.l	$48,$00ff20d9,$51cffffc,PalSys
+	dc.l	$150,$feb043f9,$007fa00,VirSla
+	dc.l	$60,$43fa00bc,$4eaefe68,MegaK
+	dc.l	$30,$3b7c0f00,$01806000,MegaB
+	dc.l	$0c,$43fa020c,$4eaeffa0,Diet
+	dc.l	$10,$0c6e0020,$00146f00,Synd
+	dc.l	$10,$027a6704,$4eec0014,Obse
+	dc.l	$30,$00326618,$4aae0226,Destr
+	dc.l	$34,$223c0001,$0002203c,Deluxe
+	dc.l	$40,$23c900df,$f08033c0,PvlSnd
+	dc.l	$6a,$48e7fffe,$42b90000,Tritech
+	dc.l	$1e,$2c562c56,$23ce0006,UtilB2
+	dc.l	$34,$33fc8380,$00dff096,BootWr
+	dc.l	$18,$41f900df,$f000317c,ColorB
+	dc.l	$3a,$3e3c00f0,$202e002e,BlizP
+	dc.l	$40,$70ff4640,$48404600,Mia
+	dc.l	$40,$207a001a,$227a001a,AddrZ
+	dc.l	$40,$43fa00da,$4eaefe68,FastRZ
+	dc.l	$50,$2c780004,$4eaefe62,PalZ
+	dc.l	$20,$0c6e0008,$003e6606,Ccs3
+	dc.l	$30,$51c8fffc,$45ed0542,DevW
+	dc.l	$20,$427900df,$f1dc4e75,EcsB
+	dc.l	$64,$23ee0032,$00051000,Shin8
+	dc.l	$b4,$23c800df,$f080363c,StarsB
+	dc.l	$70,$02382d49,$003243f9,UtilB5
+	dc.l	$70,$026c2d49,$003243f9,UtilB61
+	dc.l	$28,$43f90050,$0000203c,RipB
+	dc.l	$26,$21c00100,$d0bc0000,Genera
+	dc.l	$3c,$4eaefe62,$2c780004,VirAler
+	dc.l	$08,$8721cbf9,$43fa0018,SCAPro
+	dc.l	$14,$4e55ffd2,$203c0000,Stuer
+	dc.l	$50,$23fc1b41,$040000df,VSMenu
+	dc.l	$5c,$23fc1b41,$040000df,VSChip
+	dc.l	$44,$43fa00ec,$42802c78,VSOne
+	dc.l	$44,$43fa00d6,$42802c78,VSPal
+	dc.l	$46,$43fa00a4,$42802c78,VSBord
+	dc.l	$32,$00050006,$43fa006c,VSDr
+	dc.l	$e4,$41f900c0,$000043f9,VSFast
+	dc.l	$104,$217c00fe,$9fbeffe4,Supply
+	dc.l	$20,$2b4800a0,$2b4800b0,BTune
+	dc.l	$9c,$2b7c0007,$40000080,VCCNF
+	dc.l	$bc,$2c790007,$fff02d79,Tex33
+	dc.l	$6e,$246d0094,$266dfe3a,Outlaw
+	dc.l	$40,$203c5354,$415223c0,StarfC
+	dc.l	$76,$0c99ffff,$fffe6600,Sabaud
+	dc.l	$18,$08290001,$000f6716,NDrQ
+	dc.l	$2c,$237c0000,$0200002c,Filt
+	dc.l	$54,$203c7ae5,$fffe43fa,VCCForb
+	dc.l	$3f0,$303c035b,$461851c8,VCS32
+	dc.l	$38,$21faffce,$00804e40,Clonk
+	dc.l	$11a,$e99a2602,$0203000f,Fly
+	dc.l	$14c,$c0c62b40,$002c224d,Copyb3
+	dc.l	$b0,$48403940,$006243fa,Thor
+	dc.l	$0c,$43fa0018,$4eaeffa0,Norm,0
+virlist:dc.l	$ca,$2d790007,$efdefe3a,SCA
+	dc.l	$4c,$48e77f7f,$2c780004,Ban	;ban1/ban3
+	dc.l	$10,$2f3c0001,$00002017,Ban	;ban2
+	dc.l	$c0,$44415341,$3081323c,War
+	dc.l	$18,$41faffe6,$43f90007,Pen
+	dc.l	$0c,$2c790000,$00044eae,Dok
+	dc.l	$48,$6d026022,$41faffb2,Nor
+	dc.l	$48,$41faffb6,$43f90007,Nor	;blackstar
+	dc.l	$42,$343c0352,$d310b118,Lam	;lamer2
+	dc.l	$42,$45fa0369,$1012b118,Lam 	;'lamer'
+	dc.l	$42,$45fa0365,$1012b118,Lam	;'lamer4'
+	dc.l	$1a,$123a03d3,$343c03c4,Lam	;lamer3
+	dc.l	$42,$45fa0350,$1012b118,Lam	;'lamer5'
+	dc.l	$d8,$0007ff14,$61000008,Gad
+	dc.l	$10,$432e0007,$ec24661c,Hcs
+	dc.l	$38,$45faffc6,$226e003a,Vkill
+	dc.l	$20,$4ef90007,$00260639,TimeB
+	dc.l	$20,$303c00ff,$22d851c8,Obe
+	dc.l	$10,$432e0007,$ec24661c,Hcs
+	dc.l	$10,$432e0007,$ec246618,Hcs2
+	dc.l	$38,$4afc0007,$f5000007,GxTeam
+	dc.l	$60,$12d851c8,$fffc91fc,Abra
+	dc.l	$94,$203c1113,$d4c0e598,NoName
+	dc.l	$ce,$08390003,$00bfe001,Term
+	dc.l	$46,$48690056,$303c02e7,Extr
+	dc.l	$29c,$e6de0879,$000100bf,Coder
+	dc.l	$c,$0cb94e75,$612e00fc,Hilly
+	dc.l	$48,$2d790007,$ebda0094,Josh
+	dc.l	$10,$0c79444f,$00020000,NewBeat
+	dc.l	$106,$207c0007,$01b10480,Target
+	dc.l	$46,$08390007,$00bfe001,SuperB
+	dc.l	$28c,$257c0007,$9fcc0080,Opapa
+	dc.l	$30,$33fc4000,$00dff09a,RevLoa
+	dc.l	$2c,$0c39004d,$00bfec01,Turk
+	dc.l	$164,$287c0007,$fb002940,Graffi
+	dc.l	$24,$43f900fc,$52784eae,Microsy
+	dc.l	$1e,$33fc4000,$00dff09a,Scarf
+	dc.l	$22,$4eb90007,$e63a43fa,Warh
+	dc.l	$186,$4e704ed1,$08790008,BitCrew
+	dc.l	$20c,$2c790007,$f31243f9,Phanta
+	dc.l	$144,$33790007,$f900001c,Grem
+	dc.l	$1d2,$43f90004,$50004eae,Flash
+	dc.l	$3c,$21ca0084,$45fa024c,Kauki
+	dc.l	$396,$303900df,$f08833fc,Ultra
+	dc.l	$32a,$337c0f8b,$001a337c,Rev
+	dc.l	$2e6,$0c390049,$00bfec01,Josh
+	dc.l	$1e0,$0c4603f2,$67d42605,CCCP,0
+ProList:dc.l	550,0018,"Guar",Gar2
+	dc.l	550,-172,"Guar",Gar1
+	dc.l	550,$bb8,"PS V",Pseu
+	dc.l	550,$498,"oder",CodB
+	dc.l	550,$022,"ROMC",Rom70
+	dc.l	042,$f36,"ROMC",Rom40
+	dc.l	550,$236,"III ",Pro3
+	dc.l	550,$d4e,"2.0 ",Pseu2
+	dc.l	046,$700,"IRUS",VCtrl
+	dc.l	550,$c98,"Y V2",Pow2
+	dc.l	550,$068,"0.73",Rom73
+	dc.l	046,$d4e,"miga",ATool
+	dc.l	550,-172,"3.0 ",Sys30
+	dc.l	550,-172,"4.0 ",Sys40
+	dc.l	550,-176,"5.0 ",Sys50
+	dc.l	550,-176,"5.1 ",Sys51
+	dc.l	550,-142,"V5.3",Sys53
+	dc.l	550,-142,"V5.4",Sys54
+	dc.l	550,-130,"V6.1",Sys61
+	dc.l	550,-986,"V6.4",Sys64
+	dc.l	550,-986,"V6.5",Sys65,0
+RamList:dc.l	46,$3e,$41fafff2,$c,0,SCA
+	dc.l	550,$3e2,$48e77f7f,$4c,0,Ban
+	dc.l	550,$14c,"DASA",192,0,War
+	dc.l	46,$4c,$41faffe6,$18,0,Pen
+	dc.l	550,$3b8,$790048e7,$30,Lam2K,Lam
+	dc.l	550,$406,$226e003a,$2a,Lam3K,Lam
+	dc.l	550,$3be,$45fa0369,$42,Lam1K,Lam
+	dc.l	550,$3ba,$45fa0365,$42,Lam4K,Lam
+	dc.l	550,$3a6,$45fa0350,$42,Lam5K,Lam
+	dc.l	46,$272,$2c790000,$c,DokK,Dok
+	dc.l	46,220,$0007ff14,$d8,GadK,Gad
+	dc.l	46,$e,$6d026022,$48,0,Nor
+	dc.l	46,$e,$41faffb6,$48,0,Nor ;blackstar
+	dc.l	46,$60,$337c0f8b,$32a,RevK,Rev
+	dc.l	46,$6c,$303c00ff,$20,0,Obe
+	dc.l	46,$82,$26497000,$40,0,VKill
+	dc.l	550,$0,$fffffffe,$5b2,0,Bgs9t
+	dc.l	46,$64,$ec246618,$14,0,Hcs2
+	dc.l	46,$c2,$12d851c8,$60,0,Abra
+	dc.l	46,$31c,$4afc0007,$38,GxTK,GxTeam
+	dc.l	550,$3f4,$203c1113,$94,NNamK,Noname
+	dc.l	46,$2f6,$08390003,$ce,0,Term
+	dc.l	550,$1216,$237c0121,$100,0,LamerR
+	dc.l	550,$3f4,$2d790007,$48,0,Josh
+	dc.l	550,$40e,$48690056,$46,0,Extr
+	dc.l	550,$2ba,$e6de0879,$29c,0,Coder
+	dc.l	550,$402,$257c0007,$28c,0,Opapa
+	dc.l	550,$3c8,$33fc4000,$30,0,RevLoa
+	dc.l	46,$42,$08390007,$46,0,Superb
+	dc.l	550,-$100,$00fc0090,$12,0,Hilly
+	dc.l	46,$84,$0c79444f,$10,0,Newbeat
+	dc.l	550,-$42,"TTV1",$38,0,Terro
+	dc.l	550,$f6,$2f3a0010,$12,0,Disast
+	dc.l	46,$ac,$0c39004d,$2c,0,Turk
+	dc.l	46,$58,$0007fb00,$166,0,Graffi
+	dc.l	46,$c8,$43f900fc,$24,0,Microsy
+	dc.l	550,$346,$33fc4000,$1e,0,Scarf
+	dc.l	46,$56,$4eb90007,$22,0,Warh
+	dc.l	46,$58,$4e704ed1,$186,0,BitCrew
+	dc.l	46,$74,$0007f312,$20e,0,Phanta
+	dc.l	46,$236,$303900df,$396,0,Ultra
+	dc.l	46,$ba,$33790007,$144,0,Grem
+	dc.l	46,$aa,$43f90004,$1d2,0,Flash
+	dc.l	46,$35a,$21ca0084,$3c,0,Kauki
+	dc.l	550,$778,$b1185580,$14,0,ReturnL
+	dc.l	46,$78,$0c4603f2,$1d4,0,CCCP		;link
+	dc.l	550,-8,$303c013a,$56,0,Buto300
+	dc.l	550,-8,$0c3900df,$52,0,Buto131
+	dc.l	42,$138,$7065323c,$12,0,Saddam
+	dc.l	46,$78,$ec24661c,$14,0,Hcs
+	dc.l	0
+LinkTab:dc.l	$46b,$0e,$082e0000,$01296704,0,LamerR
+	dc.l	$44f,$0e,$082e0000,$01296704,0,LamerR2
+	dc.l	$773,$24,$000003ed,$4eaeffe2,0,TimeB
+	dc.l	$1a9,$10,$0c902f3a,$00106600,0,Disast
+	dc.l	$283,$2a,$0c290002,$000b6500,0,BGS9t
+	dc.l	$18a,$3c,$4e757200,$66000094,0,Terro
+	dc.l	$168,$1a,$363c4ef9,$41ecffe2,0,Xeno
+	dc.l	$109,$c2,$203c43f7,$456941fa,0,Irq
+	dc.l	$2cf,$1e,$203c0000,$0bb8223c,0,buto300
+	dc.l	$34a,$8,$20bc4e71,$4e716100,0,buto131
+	dc.l	$3cf,$2a,$303c0d53,$1210e419,0,cancer
+	dc.l	$fd,$1d4,$0c4603f2,$67d42605,0,CCCP
+	dc.l	0
+ValiTab:dc.l	$24,$47ec04f0,$240be48a,0,NorVali
+	dc.l	$32,$7065323c,$06c1b118,0,Saddam
+	dc.l	$32,$708a323c,$06b1b118,0,ReturnL
+	dc.l	0
+FileTab:dc.l	0,"FORM",8,"ILBM",iffilbm
+	dc.l	-1
+iffilbm:dc.b	" IFF picture",-1
+iffsoun:dc.b	" IFF sound",-1
+crunche:dc.b	" crunched file",-1
+datafil:dc.b	" data file",-1
+
+NotIns:	dc.b	" Not Installed Disk",-1
+Kick:	dc.b	" Kickstart Disk",-1
+CcsB:	dc.b	" CCS Boot 2.0",-1
+NoExpan:dc.b	" No Expansion Memory Boot",-1
+Girl:	dc.b	" Bootgirl 1.28 Loader",-1
+Mem12:	dc.b	" Memory Controller 1.2",-1
+Ass:	dc.b	" ASS Proctector 1.0",-1
+Random:	dc.b	" Random Access Boot",-1
+NoFast:	dc.b	" NoFastMem Boot",-1
+Mem13:	dc.b	" Memory Controller 1.3",-1
+XCopy:	dc.b	" XCopy Boot",-1
+Sys30:	dc.b	" PvL Antivirus 3.0",-1
+Sys40:	dc.b	" PvL Antivirus 4.0",-1
+Sys50:	dc.b	" PvL Antivirus 5.0",-1
+Sys51:	dc.b	" PvL Antivirus 5.1",-1
+Sys53:	dc.b	" PvL Antivirus 5.3",-1
+Sys54:	dc.b	" PvL Antivirus 5.4",-1
+Sys61:	dc.b	" PvL Antivirus 6.1",-1
+Sys64:	dc.b	" PvL Antivirus 6.4",-1
+Sys65:	dc.b	" PvL Antivirus 6.5",-1
+PvlSnd:	dc.b	" PvL SoundBoot",-1
+Norm:	dc.b	" Normal DOS Boot",-1
+GxTNF:	dc.b	" Gx.Team NoFastMem",-1
+BotCop:	dc.b	" Invisible Brain Bootcopy",-1
+AVirex:	dc.b	" Avirex Boot",-1
+VirTer:	dc.b	" Virus Terminator V1.0",-1
+PalSys:	dc.b	" PAL Window System",-1
+VirSla:	dc.b	" Virus Slayer 1.0",-1
+VDC13:	dc.b	" Virus Detector Cleaner V1.3",-1
+VDC16:	dc.b	" Virus Detector Cleaner V1.6",-1
+VDC17:	dc.b	" Virus Detector Cleaner V1.7",-1
+VDC20:	dc.b	" Virus Detector Cleaner V2.0",-1
+MegaB:	dc.b	" Mega-Boot 1.30",-1
+MegaK:	dc.b	" Mega Killer",-1
+Synd:	dc.b	" Syndicate Sinister",-1
+Destr:	dc.b	" Destructor",-1
+Diet:	dc.b	" Dietmar Virus Detector",-1
+Obse:	dc.b	" Dimarz Observer",-1
+Deluxe:	dc.b	" Deluxe Boot",-1
+Tritech:dc.b	" Tritech Boot V1.0",-1
+BootWr:	dc.b	" Writer Boot",-1
+ColorB:	dc.b	" Colorboot",-1
+UtilB2:	dc.b	" Utility Boot V2.0",-1
+UtilB5:	dc.b	" Utility Boot V5.0",-1
+UtilB61:dc.b	" Utility Boot V6.1",-1
+BlizP:	dc.b	" Blizzard Protector 1.0",-1
+Mia:	dc.b	" MIA Disk Boot",-1
+AddrZ:	dc.b	" ZeroVirus AutoAddRam Boot",-1
+FastRZ:	dc.b	" ZeroVirus NoFastMem Boot",-1
+PalZ:	dc.b	" ZeroVirus BigScreenTest Boot",-1
+Ccs3:	dc.b	" CCS 3.0 Boot",-1
+DevW:	dc.b	" Devware Antivirus",-1
+EcsB:	dc.b	" ECS PAL Boot",-1
+Bootleg:dc.b	" BootLeg V2.1",-1,0
+BotCop2:dc.b	" 73 Sec Invisible Brain BootCopy",-1
+Shin8:	dc.b	" Shining8 Boot-Util I",-1
+StarsB:	dc.b	" Stars & Blue Copper Boot",-1
+RipB:	dc.b	" Ripper Boot",-1
+CoppV:	dc.b	" Copper VAmiga Boot",-1
+Genera:	dc.b	" Generation Boot",-1
+VirAler:dc.b	" Virus Alert 2.01 Boot",-1
+Stuer:	dc.b	" Peter Stuer Antivirus",-1
+VSbord:	dc.b	" Viruscope BorderLess boot",-1
+VSFast:	dc.b	" Viruscope KillFast boot",-1
+VSOne:	dc.b	" Viruscope OnePlane boot",-1
+VSPal:	dc.b	" Viruscope Pal boot",-1
+VSChip:	dc.b	" Viruscope OnlyChip boot",-1
+VSMenu:	dc.b	" Viruscope MenuMaker",-1
+VSDr:	dc.b	" Viruscope QuietDrive boot",-1
+SCAPro:	dc.b	" SCA Protector",-1
+Supply:	dc.b	" SupplyTeam boot",-1
+BTune:	dc.b	" Boot-tune",-1
+VCCNF:	dc.b	" VCC NoFastMem",-1
+Tex33:	dc.b	" SemTex 3.3 boot",-1
+Outlaw:	dc.b	" OutLaws VirusChecker",-1
+StarfC:	dc.b	" Starfire Checker",-1
+Sabaud:	dc.b	" Sabaudian",-1
+NDrQ:	dc.b	" NoDrives by Quartex",-1
+Filt:	dc.b	" FilterBoot 1.01",-1
+VCCForb:dc.b	" VCC Access Forbidden",-1
+VCS32:	dc.b	" VCS Boot 3.2",-1
+Clonk:	dc.b	" Alcatraz's Clonk!",-1
+Fly:	dc.b	" SuperFly Detector 2.0",-1
+CopyB3:	dc.b	" CopyBootBlockIII",-1
+Thor:	dc.b	" Thor Antivirus",-1
+
+Sca:	dc.b	"  SCA (LSD/AEK/BS1/DAG/ICE) virus",-1
+Ban:	dc.b	"  Byte Bandit virus 1-3",-1
+War:	dc.b	"  Byte Warrior (DASA) virus",-1
+Pen:	dc.b	"  Pentagon Circle virus",-1
+Lam:	dc.b	"  Lamer Exterminator 1-5 virus",-1
+Dok:	dc.b	"  Disk-Doktor virus ",-1
+Irq:	dc.b	"  IRQ virus",-1
+Gad:	dc.b	"  Gadaffi virus",-1
+Hcs:	dc.b	"  HCS virus",-1
+Rev:	dc.b	"  Revenge V1.2 (Sendarian #1) virus",-1
+Nor:	dc.b	"  Northstar 1-2 virus",-1
+Bgs9t:	dc.b	"  BGS9 virus",-1
+VKill:	dc.b	"  VKill V1.0 (AIDS) virus",-1
+TimeB:	dc.b	"  Timebomb System",-1
+Obe:	dc.b	"  Obelisk virus",-1
+GxTeam:	dc.b	"  GxTeam virus",-1
+Abra:	dc.b	"  Claas Abraham virus",-1
+Noname:	dc.b	"  Noname virus",-1
+Term:	dc.b	"  Termigator virus",-1
+LamerR:	dc.b	"  Revenge of the Lamer virus 1",-1
+LamerR2:dc.b	"  Revenge of the Lamer virus 2",-1
+ReturnL:dc.b	"  Return of the Lamer virus",-1
+Saddam:	dc.b	"  Saddam Hussein virus",-1
+Hcs2:	dc.b	"  HCS II virus",-1
+Extr:	dc.b	"  Extreme virus",-1
+Coder:	dc.b	"  Coder virus",-1
+Josh:	dc.b	"  Joshua 1-2 virus",-1
+Hilly:	dc.b	"  Hilly virus",-1
+NewBeat:dc.b	"  Alien Newbeat virus",-1
+Target:	dc.b	"  Target system",-1
+SuperB:	dc.b	"  Superboy virus",-1
+Opapa:	dc.b	"  Opapa virus",-1
+RevLoa:	dc.b	"  RevengeLoader virus",-1
+Xeno:	dc.b	"  Xeno virus",-1
+Terro:	dc.b	"  Terrorists virus",-1
+Disast:	dc.b	"  Desaster virus",-1
+Graffi:	dc.b	"  Graffiti virus",-1
+Turk:	dc.b	"  Turk virus",-1
+Microsy:dc.b	"  Microsystems virus",-1
+Scarf:	dc.b	"  Scarface virus",-1
+Warh:	dc.b	"  Warhawk virus",-1
+BitCrew:dc.b	"  16BitCrew virus",-1
+Phanta:	dc.b	"  Phantasmumble virus",-1
+Grem:	dc.b	"  Gremlins virus",-1
+Flash:	dc.b	"  BlackFlash v2.0 virus",-1
+Kauki:	dc.b	"  Kauki virus",-1
+Ultra:	dc.b	"  Ultrafox virus",-1
+CCCP:	dc.b	"  CCCP virus",-1
+Buto300:dc.b	"  Jeff-Butonic 3.00 virus",-1
+Buto131:dc.b	"  Jeff-Butonic 1.31 virus",-1
+Cancer:	dc.b	"  Cancer-Smily virus",-1
+
+Gar1:	dc.b	" Guardian V1.1",-1
+Gar2:	dc.b	" Guardian V1.2",-1
+Pseu:	dc.b	" Pseudo Ops virus killer 1.6",-1
+CodB:	dc.b	" Coder board 4.0",-1
+Rom40:	dc.b	" Romcrack 0.40",-1
+Rom70:	dc.b	" Romcrack 0.70",-1
+Rom73:	dc.b	" Romcrack 0.73",-1
+Pow2:	dc.b	" Power Utility 2.0",-1
+;pow1:	dc.b	" Power Utility 1.0",-1
+Atool:	dc.b	" Atool 2.0",-1
+Pro3:	dc.b	" Protector III",-1
+VCtrl:	dc.b	" Virus Control 1.3",-1
+Pseu2:	dc.b	" Pseudo Ops Virus Killer 2.0",-1
+even
+AnaList:dc.l	$226,MkTagP,$fd9c,MKSum,$222,MKMemP,46,MCool
+	dc.l	42,MCold,-454,MDoIo,148,MEInt,0
+AdrModL:dc.l	$2d48,$2d48,-2,$2d50,$2d50,-2,$ffff,$2d7c,-6
+	dc.l	$ffff,$2d79,-6,$ffff,$2d7a,-4,$ffff,$42ae,-2,0
+MenList:dc.l	" i I",Amiguy," k K",Keypage," c C",Checksum
+	dc.l	" q Q",Quit," d D",NextDrd
+	dc.l	" s S",NextDrs," 1 1",Check," 3 3",Display," 4 4",Copy
+	dc.l	" 5 5",Movesub," 6 6",Create," 7 7",Info
+	dc.l	" a A",Analyse," g G",Greet," t T",Autochk
+	dc.l	" 2 2",Link," r R",tstram,0
+IoList:	dc.l	1,ReseIo,2,ReadIo,3,WritIo,4,UpdaIo,9,MotoIo,10,FormIo
+	dc.l	14,DiskIo,15,ProtIo,5,CleaIo,11,RemoIo,12,SeekIo
+	dc.l	13,ChanIo,0
+IoParL:	dc.l	$28,Iobuf,$24,Iolen,$2c,IoOff,0
+ExcExb:	dc.l	-550,-448,-442,-436,-412,-400,-196,0
+CodBL:	dc.w	$ffc0,$0a00,$ffc0,$0a40,$ffc0,$0a80	;eori.b/w/l
+	dc.w	$f1c0,$b100,$f1c0,$b140,$f1c0,$b180,0	;eor.b/w/l
+CreatLi:dc.l	"1",0,Cleaner,"2",0,NoFMem,"3",0,NoEDr,"4",0,TestPal
+	dc.l	"5",0,MakePal,"6",0,LedOff,"7",0,IrqPr,0
+analt:	dc.b	$c,$a," Analysing the Bootblock...",$a,$a,-1
+ananoth:dc.b	$a," Nothing suspect ...",-1
+usekst:	dc.b	"   Use the KickSumData Routine ",$a,-1
+mktagp:	dc.b	"   Modify the KickTag Pointer",$a,-1 
+mksum:	dc.b	"   Modify the KickSumData vector",$a,-1
+mkmemp:	dc.b	"   Modify the KickMem Pointer",$a,-1
+mcool:	dc.b	"   Modify the CoolCapture vector",$a,-1
+mcold:	dc.b	"   Modify the ColdCapture vector",$a,-1
+mdoio:	dc.b	"   Modify the DoIO vector",$a,-1
+meint:	dc.b	"   Modify the ExecBase Interrupt vector",$a,-1
+motclr:	dc.b	"   Clear  ",-1
+useioc:	dc.b	"   Use IO Command",-1
+iobuf:	dc.b	"   Buffer : $",-1
+iolen:	dc.b	"   Lenght : $",-1
+iooff:	dc.b	"   Offset : $",-1
+reseio:	dc.b	" (Reset)",$a,-1
+readio:	dc.b	" (Read)",$a,-1
+writio:	dc.b	" (Write)",$a,-1
+updaio:	dc.b	" (Update)",$a,-1
+motoio:	dc.b	" (Motor)",$a,-1
+formio:	dc.b	" (Format)",$a,-1
+diskio:	dc.b	" (ChangeState)",$a,-1
+protio:	dc.b	" (ProtStatus)",$a,-1
+remoio:	dc.b	" (Remove)",$a,-1
+seekio:	dc.b	" (Seek)",$a,-1
+cleaio:	dc.b	" (Clear)",$a,-1
+chanio:	dc.b	" (ChangeNum)",$a,-1
+bootcod1:dc.b	" + The bootblock is perhaps crypted",$a,-1
+bootcod2:dc.b	" + The bootblock is surely crypted",$a,-1
+lenab:	dc.b	" + Length : ",-1
+lenab0:	dc.b	"0000",$a,-1
+anamemt:dc.b	" + About the memory ...",$a,-1
+anadskt:dc.b	" + About the disk ...",$a,-1
+bbvir1:	dc.b $a," WARNING !!! This bootblock may be a virus ! ",$a,-1
+bbvir2:	dc.b $a," WARNING !!! This bootblock is surely a virus ! ",$a,-1
+bbloa:	dc.b $a," This Bootblock is certainly a loader ...",$a,-1
+CmdInf:	dc.b $a,$9b,"1;33;40m"
+	dc.b	"The Ultimate Virus Killer",$9b,"0;33;40m"
+	dc.b	" (CLI instruction)",$9b,"0;31;40m",$a
+	dc.b	$a9," 1989/1990 By Amiguy",$a,$a
+	dc.b	"Usage : UVK [D|d]    Date of this version.",$a
+	dc.b	"            [P|p]    Integrated virus hunter.",$a
+	dc.b	"            [?|H|h]  This text.",$a,$a,-1
+UVKVHu:	dc.b $a,$9b,"1;33;40m"
+	dc.b	"UVK Virus hunter",$9b,"0;31;40m",$a
+	dc.b	$a9," 1989/1990 By Amiguy",$a,$a,-1
+IllVali:dc.b	"  WARNING !!! Illegal Disk-Validator !",-1
+NorVali:dc.b	"  Normal Disk-Validator",-1
+PCmdok:	dc.b	$a,"Everything seems to be all right ...",$a,$a,-1
+CoolCT:	dc.b	$a,"Memory cleaned. Everything is now all right",$a,$a,-1
+Oranget:dc.b	$9b,"0;33;40m",-1
+Orange2:dc.b	$a,$9b,"0;33;40m",-1
+dollar:	dc.b	"$",-1
+Return:	dc.b	$a,-1
+DRet:	dc.b	$a,$a,-1
+Normalt:dc.b	$9b,"0;31;40m",-1
+Cls:	dc.b	$c,-1
+Cls2:	dc.b	$9b,"0 p",-1
+Delt:	dc.b	8," ",8,-1
+Detect:	dc.b	" detected  ",-1
+Detect2:dc.b	" detected",$a,-1
+DetMem:	dc.B	" detected in memory",$a,$a,-1
+Reco:	dc.b	" recognized",$a,-1
+Date:	dc.b	" Release Date : 12th July 91",$a,-1
+clrprot:dc.b	" <C>lear or <K>eep it in memory ?",$a,-1
+notft:	dc.b	" File not found",-1
+notftLi:dc.b	" File not found",$a,-1
+Sumt:	dc.b	" Recalculate Bootblock Checksum ...",-1
+Wr:	dc.b	" Writing new checksum ...",-1
+Namet:	dc.b	$c,$a," Please, enter filename ",$a,$a,$9B," p"," ",-1
+DisRamt:dc.b	$c,$a," Please, enter the address",$a,$a,$9B," p"," "
+	dc.b	"$",-1
+Volut:	dc.b	$c,$a," Please, enter volume name ",$a,$a,$9B," p"," ",-1
+patht:	dc.b	$c,$a," Please, enter path name ",$a,$a,$9B," p"," ",-1
+Bordt:	dc.b	$c,$a," Do you want your window to have a border ? (y/n)"
+	dc.b	$a," (No = BorderLess).",$9b,"0 p",-1
+MakPT:	dc.b	$c,$a," Please, enter the name of the CLI Window"
+	dc.b	$a,$a,$9B," p"," ",-1
+VerifT:	DC.B	$9B,"0 p",$c," Verifying memory ...",$a,$a,-1
+IntVt:	dc.b	"- Interrupt Vectors",$a,-1
+Resid:	dc.b	"- Resident pointers",$a,-1
+RamCt:	dc.b	"- Known viruses",$a,-1
+ResCt:	dc.b	"- Residents Prg",$a,-1
+ExbOCt:	dc.b	"- Execbase Offsets",$a,-1
+Doschk:	dc.b	"- Dos Offsets",$a,-1
+Intchk:	dc.b	"- Intuition Offsets",$a,-1
+gfxchk:	dc.b	"- Graphics Offsets",$a,-1
+Exbict:	dc.b	"- Execbase Interrupts",$a,-1
+BegIOT:	dc.b	">Begin IO (Trackdisk) ....... : $",-1
+CloIOT:	dc.b	">Close IO (Trackdisk) ....... : $",-1
+BegIOT2:dc.b	">Begin IO (Console) ......... : $",-1
+Rastt:	dc.b	">Raster ..................... : $",-1
+Okt:	dc.b	"Ok",$a,-1
+Found:	dc.b	" found & killed,",-1
+Clean:	dc.b	" No virus found in memory",$a,-1
+Rett:	dc.b	$a," Press <Return> to continue",$a,-1
+CooT:	dc.b	$a," Memory cleaned. Please press <Return>",-1
+CurOff:	dc.b	$9b,"0 p",-1
+Unkt:	dc.b	" Nothing suspect ...",-1
+UnkLit:	dc.b	"  no virus detected ...",$a,-1
+NotExec:dc.b	"  not a executable file",$a,-1
+
+Sout:	dc.b	" Insert Source in DF0:",-1
+Dest:	dc.b	" Insert Destination in DF0:",-1
+Soutm:	dc.b	" Insert Source in DF0:",-1
+Destm:	dc.b	" Insert Destination in DF0:",-1
+Sou:	dc.b	" Insert Source ",$a,-1
+Des:	dc.b	" Insert Destination ",-1
+protxt:	dc.b	" Disk is write protected",-1
+ndktxt:	dc.b	" No disk in drive",-1
+Writbb:	dc.b	" Writing bootblock ...",-1
+Readbb:	dc.b	" Reading bootblock ...",-1
+Loadbb:	dc.b	" Loading bootblock ...",-1
+Savebb:	dc.b	" Saving bootblock ...",-1
+LoaLiF:	dc.b	" Loading file ",-1
+EcrClrT:dc.b	$c,$a,$a,-1
+Kilt:	dc.b	$a,$a,"  <E>xit or <K>ill ?",$a,-1
+LiKilt:	dc.b	$a,$a,"  <E>xit or <R>emove it ?",$a,-1
+LoaStar:dc.b	" Loading the 'startup-sequence' file ...",$a,-1
+ScanStT:dc.b	$a," Scanning startup-sequence ...",$a,$a,-1
+RemStar:dc.b	$a," Virus removed from the startup-sequence",$a,-1
+VirDel:	dc.b	$a," Virus file deleted",-1
+LiWrEna:dc.b	$a," Please make your disk write enabled",$a,-1 
+Locate:	dc.b	" located at $",-1
+dosbtn:	dc.b	"  (Dosbase -000)",$a,-1
+intlevt:dc.b	"  Interrupt Level0 : $",-1
+execbtn:dc.b	"  Execbase    -000 : $",-1
+Intbtn:	dc.b	"  Intuition   -000 : $",-1
+gfxbtn:	dc.b	"  GfxBase     -000 : $",-1
+execbtp:dc.b	"  Execbase    +000 : $",-1
+maxlm:	dc.b	"  MaxLocMem ...... : $",-1
+maxem:	dc.b	"  MaxExtMem ...... : $",-1
+coldt:	dc.b	"  ColdCapture .... : $",-1
+coolt:	dc.b	"  CoolCapture .... : $",-1
+kicktt:	dc.b	"  KickTagPtr ..... : $",-1
+corvec:	dc.b	"  Corrupted vector at : $",-1
+UvkPrt:	dc.b	" Printing bootblock ... ",-1
+VerifPT:dc.b	" You should verify your printer ... ",-1
+Sure:dc.b " I'm going to RESET your amiga to clear the memory",$a,$a
+	dc.b	" Are you sure (y/n) ? ",-1
+even
+namep:	dc.b "prt:",0
+name3:	dc.b "raw:45/20/524/52/Uvk Request",0
+even
+name2:	dc.b "con:45/20/524/52/Uvk Request",0
+even
+name:   dc.b "raw:40/5/534/149/UVK V1.22.by Amiguy (K???)",0
+even
+	dc.l 0
+texte:  dc.b $c,$a," ",$9b,"0;33;40mThe Ultimate Virus Killer",0,0
+	dc.b $9b,"0;31;40m"
+drtxt:	dc.b "                 ",0
+	dc.b $a," ",$9b,"0;33;40m-------------------------"
+	dc.b $9b,"0;31;40m"
+	dc.b $a,$a," Your choice: ",$a,$a
+	dc.b " 1> Check Bootblock virus auto "
+autotxt:dc.b "off ",$a
+	dc.b " 2> Check Link-Virus",$a," 3> Display Bootblock"
+	dc.b $a," 4> Copy Bootblock",$a," 5> Move Bootblock "
+	dc.b $a," 6> Create Bootblock",$a," 7> Informations"
+	dc.b $a,$a," 8> Quit",$a,$9b,"0 p",-1
+MOVET:	DC.B $c,$a," Move a Bootblock"
+MovtDr:	dc.b	"   (DF0)=Boot"
+	DC.B $a,$9b,"0 p"," ----------------",$a
+	dc.b $a," 1> Bootblock to file"
+	DC.B $a," 2> File to Bootblock",$a
+	dc.b $a," 3> Exit",-1
+KeyTxt:	dc.b $c,$a," Keys :",$A," ----",$a,$a
+dc.b	" <A>nalyser    : Analyse the Bootblock.",$a
+dc.b	" <C>hecksum    : Recalculate BootBlock Checksum.",$a
+dc.b	" <D>estination : Choose destination drive.",$a
+dc.b	" <G>reetings   : Thanx to ...",$a
+dc.b	" <I>nfo        : About UVK ...",$a
+dc.b	" <K>ey         : This page.",$a
+dc.b" <P>rint       : Bootblock hardcopy (during Display).",$a
+dc.b	" <R>am Check   : Verify the memory.",$a
+dc.b" <R>am Display : Show the memory in ASCII (during Display).",$a
+dc.b	" <S>ource      : Choose source drive.",$a
+dc.b	" Au<T>o        : AutoCheck",$a
+dc.b	" <Q>uit        : Reset.",$a,-1
+Linkt:	dc.b " Link Virus Check"
+	dc.b $a,$9b,"0 p"," ----------------",$a
+	dc.b $a," 1> File Scanning"
+	dc.b $a," 2> Startup Scanning"
+	dc.b $a," 3> Directory Scanning"
+	dc.b $a," 4> Disk-Validator Scanning"
+	dc.b $a," 5> Directory",$a
+	dc.b $a," 6> Exit",$a,-1
+Greeti:
+dc.b $c,$a,$a,$a
+dc.b " I want to thank the people who support me in making this",$a
+dc.b " program :",$a,$a
+dc.b " - Kougar/Dreamdealers for his printer, his moral support, and",$a
+dc.b "   his viruses.",$a
+dc.b " - Celenoid/Dreamdealers for the Disk-Doktors virus.",$a
+dc.b " - Mr Cupertino for the Irq virus.",$a
+dc.b " - the person who give me a lot of viruses.",$a,$a
+dc.b " and all the other i've forgotten...",$a,-1
+GuyTxt:dc.b $c	
+dc.b $a,$a," This program is copyrighted, but freely redistributable.",$a
+dc.b " I have spent many time to write this proggy, so if you enjoy ",$a
+dc.b " it, if you want the docfile or the updates, i request you to",$a
+dc.b " send me 40 FF. This little contribution will support me in",$a
+dc.b " fighting the viruses. I stand by you !",$a,$a
+dc.b " Here is my address :",$a
+dc.b "  Amiguy, 2 rue du pré Feray, 27180 Arnières/Iton. France",$a
+dc.b " You can also contact me on the Minitel :",$a
+dc.b "  3614 RTEL2, BAL Amiguy",$a,$a
+dc.b " If you find any bugs/new ideas for updates, if you have some",$a
+dc.b " new viruses, you must contact me too.",$a
+dc.b " See you soon !",$a,-1
+even
+InsT:	dc.b $c,$a," Create a Bootblock"
+InsTDr:	dc.b	"   D:DF0",$a
+	dc.b	" ------------------",$a
+InsT2:	dc.b	$a
+dc.b " 1> Ram Cleaner .. Clean the memory from all the viruses",$a
+dc.b " 2> NoFastMem .... Disconnect all your Fast Memory until reset",$a
+dc.b " 3> NoDrives ..... Switch off the external drives until reset",$a
+dc.b " 4> Test Pal ..... Do a reset if your screen isn't in PAL",$a
+dc.b " 5> Make Pal ..... Rename and force the CLI window to 256 lines",$a
+dc.b " 6> Led Off ...... Switch off the low pass filter on A500/A2000",$a
+dc.b " 7> IRQ Protector  Protect your Amiga against the IRQ virus",$a
+dc.b $a," 8> Exit",$a,$a," "
+dc.b "Choose functions by pressing the fine keys, and press <Return>",$a
+dc.b " to build the Bootblock. (No Function = Normal Bootblock)",-1
+
+InfT:	DC.B $c," UVK knows the following viruses :",$a,$a
+dc.b " Bootblock viruses :",$a
+dc.b " SCA (AEK/LSD/BS1/DAG/ICE), Byte Bandit 1-3 (FORPIB), Graffiti,",$a
+dc.b " Pentagon Circle, Lamer Exterminator 1-5, Disk-Doktor, Gadaffi,",$a
+dc.b " Northstar 1-2, Kauki, Blackflash, Coder, Joshua 1-2, NoName,",$a
+dc.b " HCS '4220 1-2, Ultrafox, VKill (AIDS), Obelisk, Termigator,",$a
+dc.b " Claas Abraham, Warhawk, GxTeam, Superboy, Revenge (Sendarian),",$a
+dc.b " Target system, Extreme, Timebomb, Opapa, RevengeLoader, Hilly,",$a
+dc.b " Newbeat, Turk, Microsystems, Byte Warrior, Phantasmumble,",$a
+dc.b " Scarface, 16BitCrew, Gremlins, CCCP.",$a
+dc.b " Link viruses :",$a
+dc.b " Revenge Lamer 1-2, BGS9, Xeno, CCCP, Terrorists, Disaster,",$a
+dc.b " Butonic 1.31/3.00, Return Lamer, IRQ, Saddam, Cancer-Smily.",$a
+
+dc.b $a,$a," Press <RETURN> for more info.",-1
+
+inft2:dc.b $c," UVK knows the following BootBlocks :",$a,$a
+dc.b " BootGirl, CCSBoot 2.0/3.0, XCOPY 2.0 Boot, ASS Protector 1.0,",$a
+dc.b" AVIREX, V.D.C 1.3/1.6/1.7/2.0, No Expansion Memory, Megakiller,",$a
+dc.b " TIP NoFastMem, Gx.Team NoFastMem, Virus Terminator V1.0,",$a
+dc.b " BootLeg V2.1, I.B BootCopy, Mem Controller 1.2/1.3, Mia disk,",$a
+dc.b " Random Access, Virus Slayer 1.0, Mega-Boot 1.30, Pal Window,",$a
+dc.b " Dimarz Observer, Dietmar Virus Detector, Sinister Syndicate,",$a
+dc.b" Pvl Protectors 3.0/4.0/5.1/5.0/5.3/5.4/6.1/6.4/6.5 & SoundBoot,",$a
+dc.b" Virus Detector, Deluxe Boot, TriTech, Utility Boot 2.0/5.0/6.1,",$a
+dc.b " Blizzard Protector, ColorBoot, WriterBoot, 'Stars&blue Copper',"
+dc.b $a," ZeroVirus AutoAddRam/NofastMem/BigScreenTest, Destructor,",$a
+dc.b " ECS Pal, Shining8 Boot-Util I, Ripper, 'Copper VAmiga',",$a
+dc.b " Generation, VirusAlert 2.01, Peter Stuer Antivirus, SemTex 3.3,"
+dc.b $a," SCA Protector, Viruscope boots (7), SupplyTeam, Boot-tune.",$a
+dc.b $a," Press <RETURN> to continue.",-1
+
+Inft3:dc.b $c," and also the following ones :",$a,$a
+dc.b " Outlaws Ckecker, Starfire Checker, Quartex NoDrives, Clonk!",$a
+dc.b " Sabaudian, VCC Access forbidden, Filter Boot 1.01, VCS 3.2,",$a
+dc.b " Thor Antivirus, CopyBootIII, SuperFly Checker, VCC NoFastMem.",$a
+dc.b $a,$a,$a," What UVK can do :",$a
+dc.b " +Check Ram/Disk, Recognize residents Prgs, Clean Ram/Disk,",$a
+dc.b "  Restore/Display altered Vectors, Recalculate Checksum,",$a
+dc.b "  Analyse a Bootcode, Print a bootblock, Create a bootcode ...",$a
+dc.b " +For Keys info, type 'K'.   For Amiguy info, type 'I'.",$a,$a
+dc.b "   === Only for Digital Arts version !!!! ===",$a
+dc.b $a," Press <RETURN> for the main menu.",-1
+
+even
+Diskport:
+	dc.l	0
+	dc.l	0
+	dc.w	$0400
+	dc.l	0
+	dc.b	0
+	dc.b	31
+	dc.l	0
+lh1:	dc.l	lh2
+lh2:	dc.l	0
+	dc.l	lh1
+	dc.b	0
+	dc.b	0
+Diskioreq:
+	dc.l	0
+	dc.l	0
+	dc.b	5
+	dc.b	0
+	dc.l	0
+	dc.l	diskport
+	dc.w	48
+	dc.l	0
+	dc.l	0
+	dc.w	0
+	dc.w	0
+	dc.l	0
+	dc.l	0
+	dc.l	0
+	dc.l	0
+	dc.l	0
+	dc.l	0
+TrkDisk:dc.b	"trackdisk.device",0
+File:	blk.b	30,0
+even
+;diskvalid:blk.b	1848,0
+dc.b	"c/"
+File2:	blk.b	50,0
+devic:	dc.w	0,0,0
+ScrPrT:	dc.b	"UVK BootBlock Hardcopy",$a
+	dc.b	"~~~~~~~~~~~~~~~~~~~~~~",$a
+ScrPrE:
+Scr:	blk.b	1024,0
+ConvTxt:dc.b	"00000000",$a,-1
+AmiDos:	dc.b	"AmigaDOS"
+ValiNam:dc.b	"L/Disk-Validator",0
+Startup:dc.b	"S/Startup-Sequence",0
+LamName:dc.b	$a0,$a0,$a0,$a0,$a0,0
+ButoNam:dc.b	$a0,$a0,$a0,$9b,$41,0
+even
+InfoBuf:blk.b	40,0
+SaveIo:	blk.b	60,0
+IntuiBase:dc.l	0
+DosBase:dc.l	0
+ConHandle:dc.l	0	;handle fenetre raw
+WinHandle:dc.l	0	;handle fenetre con 
+ScrP:	dc.l	0
+Lock:	dc.l	0
+Flag:	dc.l	0
+PrtH:	dc.l	0
+XenoAdr:dc.l	0
+XenAdr:	dc.l	0,0,0	;$c04ada,$c04a62,$c04aa4
+IrqAdr:	dc.l	0
+Key:	dc.b	0
+Buf: 	dc.b	0
+ExOFlag:dc.b	0
+Protector:dc.b	0	;flag protector found
+RFlag:	dc.b	0	;flag resident
+FlagDr:	dc.b	0	;flag external drive 1=only df0:
+NotFound:dc.b 	0	;flag file not found	
+FlagEcr:dc.b	0	;flag ecriresub	
+CrFlag:	dc.b	0	;flag create
+AutoF:	dc.b	0	;flag autochk
+DrS:	dc.b	0	;source
+DrD:	dc.b	0	;destination	
+DrM:	dc.b	0	;drmove
+DrL:	dc.b	0	;drlink
+VirDia:	dc.b	0	;evaluation risque virus
+LoaDia:	dc.b	0	;evaluation loader
+PCmd:	dc.b	0	;flag protector cmd
+XenoF:	dc.b	0	;xeno flag
+firstf:	dc.b	0
+EStrtUp:dc.b	0
+RetFl:	dc.b	0
+EndFlag:dc.b	0
+LinkFnd:dc.b	0
+FileFnd:dc.b	0
+AllRight:dc.b	0
+DStep:	dc.b	0
+DirScan:dc.b	0
+Ident:	dc.b	0
+even
+DriveC:	dc.l	0	;connected drives
+Buffer:	dc.l	0	;adr boot
+BufEnd:	dc.l	0  	;adr fin boot	
+ChkSum:	dc.l	0	
+Ptr:	dc.l	0
+BufFWr:	dc.l	0
+StarBuf:dc.l	0	;buffer startup
+StarLen:dc.l	0	;len startup
+RealLen:dc.l	0	;len file
+RealLBu:dc.l	0	;buffer file
+Rd2Buf:	dc.l	0
+AdrVi:	dc.l	0
+LenVi:	dc.l	0
+Cool:	dc.l	0
+Boots:	dc.l	0
+Mem:	dc.l	0
+FileInfo:dc.l	0
+IrqOpenLib:dc.l	0	;sauvegarde point entree irq
+OldOpenW:dc.l	0
+KeyCpt:	dc.l	0
+Nameprog:dc.l	0	
+IBoot:	dc.l	0	;handle boot
+Inter:	dc.l	0
+ReturnCode:dc.l	0
+Para:	dc.l	0	;ptr parametres cli
+LenPara:dc.l	0	;len paramatres cli	
+WbMsg:	dc.l	0	;msg workbench
+LenBB:	dc.w	0	;len built boot
+lenboot:dc.l	0
+try1:	dc.l	0	;variables debugging
+try2:	dc.l	0
+try3:	dc.l	0
+try4:	dc.l	0
+iodevice:dc.l	0	;ptr debut iodev
+raster:	dc.l	0	;ptr raster int
+param:	dc.b	"?"
+dc.b	$a
+paraend:

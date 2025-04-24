@@ -1,0 +1,834 @@
+
+ VIRUS INFO
+ ----------
+ Mise à jour du 17/09/91. Copyright 1990,1991,1992 par Amiguy
+
+ Beaucoup de personnes qui ne connaissent pas les virus attribuent
+ souvent certains de leurs problèmes (gurus,reset ...) aux virus.
+ Pour savoir s'il est question d'un virus ou non, voici la description
+ complète des principales caractéristiques des virus connus d'UVK, d'après
+ leur désassemblage.
+
+ Le répertoire 'Hints' de cette présente disquette contient quelques
+ manifestation de ces virus (images ou animations). Ces programmes sont
+ bien sûr inoffensifs.
+
+
+ I - VIRUS 'BOOTBLOCKS'
+
+ - SCA Virus (Swiss Cracking Association)
+
+   + Les mutants (copies) sont les BS1, LSD, DAG, AEK, ICE virus.
+   + Se recopie toujours à l'adresse $7ec00.
+   + Se reconnait sur la disquette grâce à sa CHECKSUM ($37fcbb02) et
+     en mémoire.
+   + Utilise le vecteur résident CoolCapture.
+   + Lorsque l'on appuie sur le bouton gauche de la souris pendant le
+     reboot le virus se vide de la mémoire (l'écran devient vert).
+   + Modifie le DoIO de ExecBase.
+   + Le compteur de reproduction est à l'offset $2f8 (2 octets).
+   + Affiche ce message toutes les 16 copies:
+     'Something wonderful has happened ..'
+     'Your AMIGA is alive !!!'
+     'and, even better ...'
+     'Some of your disk are infected'
+     'By a VIRUS !!!'
+     'Another masterpiece of'
+     'The Mega-Mighty SCA !!.'
+
+ - Byte Bandit Virus (Byte Bimbo)
+
+   + Contient le texte : 'Virus by Byte Bandit in 9.87. Number of copys:'
+     Ce texte a parfois été changé en 'FORPIB ...' (mutant).
+   + Le compteur de reproduction est à l'offset $48 (juste après le
+     texte) (4 octets).
+   + Utilise le vecteur résident KickTagPtr.
+   + Se reconnait en mémoire.
+   + Détourne la VBL pour mesurer le temps (Une VBL dure 1/50ème de
+     seconde).
+   + Au bout de 7 mn ($5208 VBL) il simule un plantage en effacant le
+     DMA bitplane. On peut en sortir en pressant simultanément:
+     ALT G + AMI G + ESPACE + AMI D + ALT D
+   + Du fait qu'il choisit son emplacement mémoire à l'aide d'un
+     ALLOCMEM, il est rarement au même endroit.
+   + Il détourne BeginIO (il se reproduit à chaque insertion de disquette).
+
+ - Byte Warrior Virus (DASA02)
+
+   + C'est en fait un détecteur de virus (voir texte plus bas) mais
+     malheureusement il produit les même effets qu'un virus ...
+   + Utilise le vecteur résident KickTagPtr.
+   + Emet un petit bruit lorsqu'un virus essaye de modifier CoolCapture.
+   + Contient 'DASA02' sur le bootblock.
+   + Se situe à l'adresse $7f800.
+   + Décode le texte suivant à l'adresse $7fc00:
+     'Virus detector by the mighty Byte Warrior!!! Please, please,
+      please don't install this disk, coz i want to travel! Spread the
+      bootblock and the word!'
+   + Détourne DoIO (Même chose que le Byte Bandit).
+
+ - Pentagon Circle virus (3 versions)
+
+   + C'est un virus maquillé en détecteur de virus : il nous demande
+     d'enlever la protection écriture lorqu'il a trouvé un virus
+     pour le tuer (Au moyen d'un Requester style GURU). En fait il s'ins-
+     talle à sa place ! (Un virus en remplace un autre).
+   + Contient les chaines : 'The Pentagon Circle Virus Slayer by
+     Mr. Mountainlake!' etc ... (visible sur le boot).
+   + Se loge à l'adresse $7fb00.
+   + Utilise CoolCapture.
+   + Efface KicktagPtr et sa CHECKSUM.
+   + Ne se recopie que si le boot commence par $43fa0018, c'est en
+     principe le bootblock de INSTALL.
+
+ - Lamer Exterminator virus (10 versions)
+
+   Suivant les versions :
+   + En plus de se recopier sur le boot, le virus efface un secteur au choisi
+     au hazard en y écrivant 'LAMER!'.
+   + Les secteurs effacés sont toujours les secteurs 0 & 1.
+   + Le virus recopie le bootblock de la disquette infectée au secteurs 2 et 3
+     avant de se recopier sur le boot. Au reset, le virus charge puis exécute
+     le bootblock original. Le virus est donc totalement transparent. Les
+     données se trouvant au secteur 2 et 3 sont évidemment effacées.
+
+   Caractéristiques communes:
+   + C'est le plus vicieux : Aucun texte ne permet de l'identifier sur
+     bootblock (le texte est codé).
+   + Décode le texte suivant à une adresse non définie:
+     'The LAMER Exterminator !!!'
+   + Une bonne partie du programme est elle aussi codée se qui empêche
+     toute analyse automatique (Avec NoVirus ou UVK par ex.)
+   + Utilise le vecteur KickTagptr.
+   + Détourne DoIO.
+   + Ne se situe jamais au même endroit du fait du moyen d'allocation
+     de mémoire.
+   + Son compteur se trouve à l'offset $3a2 (4 octets).
+
+ - Disk-Doktors virus
+
+   + Contient la chaine ' (C)rackright by Disk-Doktors ' (visible sur le
+     boot).
+   + Se crée une tâche à lui pour modifier sans cesse les vecteurs
+     ColdCapture, CoolCapture, WarmCapture et le vecteur execbase DoIO.
+     C'est la première fois chez un virus.
+   + Se loge en mémoire en fonction de la pile système (emplacement non
+     fixe).
+   + Utilise WarmCapture et Coolcapture.
+   + Ne fonctionne pas sur Kickstart 1.3 (Le vecteur DoIO est différent
+     sur 1.2 et 1.3).
+   + Détourne DoIO (même effet que le byte bandit : se loge sur toute
+     disquette insérée dans un drive).
+   + Détourne la VBL (execbase+148).
+   + Son compteur est à l'offset $3a8 (4 octets).
+
+ - Gadaffi virus
+
+   + Contient la chaine : 'GADAFFI VIRUS Spreading stricty forbitten
+     !!! (c)88 JG.'
+   + Se loge en mémoire à l'adresse $7fb00.
+   + Utilise CoolCapture et KickTagptr.
+   + S'amuse avec le drive tous les 14 resets (ça surprend au début...).
+   + Détourne DoIO.
+
+ - Revenge (dick) Virus.
+
+   + Contient la chaine 'REVENGE V1.2GCOUNT :'.
+   + C'est un petit farceur : au bout de 1 mn 11 s et 7 centièmes
+     (soyons précis), plus simplement $DEC VBL, il change le pointeur
+     de la souris en phallus, en changeant dans la copperlist du CLI, le
+     sprite utilisé pour la souris.
+   + Se reconnait en RAM et sur la disquette.
+   + S'efface de la mémoire si l'on appuie sur le bouton gauche de la
+     souris au reboot (l'écran devient vert pale, puis blanc).
+   + Utilise CoolCapture.
+   + Se loge à l'adresse $7e000.
+   + Le compteur de reproduction se trouve à l'offset $3f6 (donc
+     $7e3f6) (2 octets).
+
+ - HCS 4220 virus.
+
+   + C'est encore un virus déguisé en anti-virus !
+   + Affiche (et contient, visible sur la disquette) le texte suivant :
+     '*** WARNING - VIRUS DETECTED ***' lorsque qu'il détecte un virus.
+   + Se loge à l'adresse $7ec00.
+   + Se reconnait en RAM et sur disquette.
+   + Dévie DoIO (même effet que le byte bandit).
+   + Utilise CoolCapture, efface KickTagPtr.
+   + Fait clignoter la LED du power au reset
+
+ - Northstar (Starfire) virus.
+
+   + 2 versions
+   + C'est encore un antivirus qui à la maladresse de contaniner les boots
+     normaux (le boot d'INSTALL).
+   + Se loge à l'adresse $7ec00 et utilise CoolCapture.
+   + Si l'on appuie au reboot sur le bouton du joystick, le virus signale
+     sa présence en RAM par un clignotement de la led du power.
+   + Connait quand même le SCA,Byte bandit et un PvL.
+   + Se reconnait sur le boot et en ram.
+   + Détourne DoIO.
+   + Signale la détection d'un virus par une GURU.
+   + Contient les chaines : 'VIRUS detected on disk! STARFIRE/NORTHSTAR',
+     OLD Antivirus. STARFIRE/NORTHSTAR     Antivirus is better!'.
+
+ - Obelisk virus.
+
+   + Affiche au bootage un drapeau allemand au copper sur lequel est
+     écrit en gros caractères blancs : 'obelisk softworks crew'.
+   + Se loge en ram en fonction de la pile système (emplacement variable).
+   + Utilise CoolCapture.
+   + Détourne DoIO.
+   + Se reconnait sur le boot (checksum) et en mémoire (déviation de
+     DoIO).
+
+ - VKill V1.0 virus.
+
+   + Autre faux antivirus qui se manisfeste à l'aide d'un requester
+     (du style VIRUSX).
+   + Détecte le Byte Bandit et le SCA. Il affiche alors un requester intitulé
+     'VKill 1.0 Infection control' : 'SCA virus detected'. On peut choisir
+     'Destroy' or 'Ignore'. Il affiche ensuite 'Bootblock neutralized' Etc...
+   + Tous ces textes sont cryptés donc indétectables sur le disk.
+   + Signale également tout blockblock différent du bootcode normal.
+     Il affiche alors : 'Bootblock code not normal'. 'Thanks' et 'Thanks'.
+   + Détourne PutMsg.
+   + Utilise CoolCapture.
+
+ - Timebomb virus.
+
+   + Même rôle que le 'TIMEBOMB SYSTEM' mais en plus se propage comme
+     un virus.
+   + Se loge à l'adresse $70000.
+   + Quand son compteur est à 2 il passe à l'attaque :
+     Efface les secteurs 880 à 1002, là où se trouve la plupart des
+     HEADERS...
+     Puis affiche à l'aide d'une guru : 'YOU CAME ALL THE WAY FOR'
+     SHIT ! HAVE A NICE DAY SUCKER'.
+   + Contient également 'TIME BOMB V1.0 CODED BY ARKON MEMBER OF 
+     AVIREX. IDEA BY THE WIZARDS INC. NOTE : IT SEEMS THAT THEY WERE
+     NOT INTERESTED BECAUSE I DID NOT GET ANY ANSWER OF THEM'.
+
+ - Target system.
+
+   + Il a pratiquement le même rôle que le TIMEBOMB.
+   + Il a pour but d'effacer une disquette dont on lui a donné le
+     nom ou n'importe quelle disquette.
+     Ce boot est installé par l'utilitaire (!) du même nom.
+     On donne le nom de la disquette cible (target) ou pas de nom du
+     tout : dans ce cas toute disquette insérée est une disquette 'target'.
+     Pour agir il se loge en mémoire et guette la disquette cible.
+     Lorsqu'il l'a trouvée, il y efface 40 pistes à partir du secteur
+     881. Ceci n'est pas le fait du hasard : c'est dans cette zone que
+     se trouve les headers des fichiers Amigados (c'est grâce à ces
+     headers que DiskSalv peut récupérer une disquette endommagée).
+   + Il se loge à l'adresse $7ec00.
+   + Il utilise CoolCapture pour résister au reset.
+   + Il détourne DoIO.
+   + Ne se recopie pas comme un virus.
+   + Le nom de la disquette cible est codé et se trouve à l'offset $1ac
+     sous la forme d'une chaine BCPL, c'est à dire le nom précéde de
+     son nombre de caractères. Pour le décoder il faut faire un
+     EOR.B  #$ff (un NOT quoi!), sur les caractères du nom de la disquette
+     'cible' le nom $058c8bd2cfcfff donnera, décode $0573742d303000, c'est à
+     dire un nom de 5 caracteres : 'st-00'.
+   + Reconnait le nom de la disquette 'cible' qu'il soit en majuscules
+     ou en minuscules.
+
+ - Termigator virus
+
+   + Se recopie a $7f4d0.
+   + Utilise Coolcapture, efface le KickTagptr.
+   + Détourne les interruptions $68 et $6c pour se réinstaller sans cesse.
+   + Détourne DoIO pour se reproduire.
+   + Bloque la machine, puis 2 solution:
+     1. affiche le texte suivant avec 'DisplayAlert':
+        'Only the TERMIGATOR'VIRUS makes it possible! bye!...'
+        puis plante l'amiga.
+     2. Si l'on Presse simultanément la touche <Alt Droite> puis
+        les touches i, l, o, v, e, g, x, v, i, r, u, s le virus fait
+        'seulement' un reset.
+
+ - Claas Abraham virus
+
+   + Utilise l'interruption de niveau 2 ($68), CoolCapture, ColdCapture et
+     KickTagPtr. Dévie BeginIO
+   + La plus grande partie du virus est cryptée par une valeur choisie au
+     hazard.
+   + Se reconnait en ram.
+   + S'installe en ram grâce à un AllocMem, donc à des endroits différents.
+
+ - OPAPA virus (voir répertoire Hints)
+
+   + Détourne la structure interrupt 148(a6) d'execbase, BeginIO.
+     Utilise kickTagPtr
+   + Attaque après 8 mn. Le virus se présente sur un écran à fond noir,
+     avec des caractères 'topaz' jaunes ($ff0): 'i'm the opapa virus'.
+     Puis il affiche 'ready', 'steady' allume les unités de disquettes,
+     place les têtes en piste 0, affiche 'format', puis déplace les têtes de
+     lecture piste à piste, simulant un formatage. Puis fait un reset.
+   + Possède un compteur de reproduction.
+   + Les textes sont visibles sur le disk.
+
+ - Coder virus
+
+   + Possède le texte 'Bootblock installed with 'CODER' - Ultimate Virus
+     Killer!!' visible sur le disk, et uniquement visible en mémoire a
+     l'adresse $7f300:
+     'Something WONDEFUL has happened!! Your Amiga is alive, and it is
+     infected with the 'Coders Nightmare Virus'. - The Ultimate key-killer,
+     masterminded by the megamighty Mr N. of The PowerBomb System!!'
+   + S'installe a l'adresse $7f600 et $7f800.
+   + Utilise KickTagPtr, l'interruption de niveau 2 ($68) et détourne DoIO.
+   + A l'aide de l'interruption $68, le virus compte les touches frappées
+     au clavier. Au bout de 2560 touches, fait clignoter la led en effectuant
+     des rotation, et des inversions de bits dans la mémoire de $20000 a
+     $80000, perturbant le fonctionnement des programmes présents en ram.
+
+ - GxTeam virus
+
+   + Ne fonctionne que sur le kickstart 1.3 (mauvaise programmation).
+   + S'installe à $7f4d0 en mémoire.
+   + Utilise KickTagPtr, CoolCapture et détourne DoIO.
+   + Change d'endroit en ram de $f4d0 en $7f4d0 pour ne pas être détecté.
+   + Affiche dans une fenêtre guru, le texte suivant après l'avoir décodé :
+     'Mais qui voilà ??C'est le nouveau VIRUS de GX.Team !!'
+     'AAAHH! Les salauds! Les ...(Insultes diverses)'
+     'He!He! SILENCE :'
+     'GX.TEAM entre enfin dans la légende ...'
+     'BYE!!!'
+     Il n'est donc pas visible sur la disquette.
+
+ - Joshua virus
+
+   + Détourne l'interruption 148(a6) d'execbase, BeginIO.
+   + Utilise KickTagPtr.
+   + Possède une routine de sprite, mais qui n'a pas l'air de fonctionner.
+
+ - Revenge Bootloader virus
+
+   + Copie quasi conforme du Byte Bandit.
+
+ - SuperBoy virus
+
+   + Se recopie a $7ec00 en ram. Ce virus ressemble fortement au SCA.
+   + S'efface de la mémoire si l'on appuie sur le bouton du joystick au
+     reset. L'écran change alors de couleur ($a0a)
+   + Utilise CoolCapture et detourne DoIO.
+   + Possede un compteur de reproduction.
+   + Toutes les 16 infections, le virus affiche le texte suivant dans une
+     fenêtre Guru (le texte n'est pas codé, donc visible sur la disquette):
+     '!!! ATTENTION !!!'
+     'Some little beings, called Bits and Bytes,'
+     'have reproducted themselves on your disks.'
+     'But do not worry, for it is only a ...'
+     'VIRUS !!!'
+     'This reproduction is another great deed of'
+     'The Famous Superboy'
+
+ - Hilly virus
+
+   + Ne fonctionne que sur kickstart 1.2 (voulu par l'auteur)
+     Met un écran rouge k1.3.
+   + Se recopie en 'lisant' sur disk en $7d400.
+   + Utilise KickTagPtr et Coolcapture. Détourne DoIO.
+   + Une routine est prévue pour effacer au hasard un secteur de la
+     disquette. Mais des contradictions dans le programme montrent que
+     quelqu'un a changé cette routine pour que le secteur effacé soit
+     toujours le secteurs 0. (remords ?)
+   + Il existe sûrement une version oû la piste 'cible' est réellement choisie
+     au hazard.
+
+ - New Beat virus
+
+   + Se reconnait en ram ($444f a $20000).
+   + Ne fonctionne pas sous kicktart 1.3 (mauvaise programmation).
+   + Se recopie toujours à $20000 en mémoire.
+   + Utilise CoolCapture, détourne DoIO et FindResident.
+   + Par une somme de controle, le virus vérifie si son texte n'a pas été
+     modifié. Le texte est le suivant (visible sur la disquette) :
+     'THIS IS THE ALIEN NEW BEAT BOOT! THE BOOT WHICH CREATES A NEW'
+     'DIMENSION IN MEMORY. THIS IS A NEW STYLE OF VIRUS HUNTING!!! 1790992'
+     'V1.0  Ir  04/01/1989    You won't believe it but this thing kills the'
+     'SCA, ByteBandit, Dasa (ByteWarrior), AIDS AND Northstar virus!!!!!'
+   + Ne tue aucun virus en ram, contrairement à ce qu'indique le texte...
+
+ - 16 Bit Crew
+
+   + Se recopie toujours à $7ec00.
+   + Utilise CoolCapture, détourne DoIo.
+   + Compteur reproduction à $7edca (1 word).
+   + Agit quand le compteur de reproduction est un multiple de 8.
+     S'amuse avec la led du power et fait un reset.
+   + Se recopie sur disquette après comparaison des compteurs de
+     reproduction.
+
+ - CCCP Virus
+
+   + Virus à la fois sous la forme d'un bootblock et d'un fichier qui se
+     'link'. Voir 'LINK-VIRUS'.
+
+ - Disk Herpes virus
+
+   + Se recopie à $7ec00.
+   + Utilise CoolCapture, détourne DoIO.
+   + S'efface de la mémoire et affiche le message suivant si l'on presse
+     le bouton gauche de la souris et simultanément le bouton du joystick
+     au moment du reset :
+     '--- Hello Computerfreak ---'
+     'You've got now your first VIRUS.'
+     '** D i s k - H e r p e s **'
+     'Many Disks are infected !!'
+     'Written by >tshteopghraanptha<'
+     ' 22.07.1987 in Berlin'
+   + Se texte s'affiche grâce a Move() et Text() de la gfx.library,
+     la copperlist se situe à $7eea2.
+   + Le virus efface 40 secteurs (la moitie de la disquette) à partir du
+     secteur racine (40e piste). C'est à cet endroit que se situe la plupart
+     des secteurs header utilisés par Disksalv pour récupérer les fichiers.
+     Cela revient donc quasiment à formater la disquette sans aucun recours.
+     Il affiche ensuite le texte au bout de 20 reproductions (compteur en
+     ram).
+
+ - Graffiti virus 
+
+   + Ressemble au 16 Bit Crew.
+   + Se recopie à $7ec00, utilise Coolcapture, détourne DoIO.
+   + Compteur reproduction à $7ef94 (1 word).
+   + Agit quand le compteur est un multiple de 8, si l'on appuie sur le 
+     bouton gauche de la souris :
+     Affiche 'VIRUS! written by Graffiti' en saumon sur fond violet,
+     avec une petite animation en 3d filaire : le mot 'AMA' tournant suivant
+     un axe vertical passant par le M.
+
+ - Microsystems virus (voir répertoire Hints)
+
+  + Se recopie à $7f400. Ne fonctionne pas sous 1.3 (pointeur sur le texte
+    'dos.library' en ROM 1.2).
+  + Utilise CoolCapture et ColdCapture.
+  + Détourne DoIO, Addtask et RemTask.
+  + Se manisfeste en écrivant le texte suivant à l'aide de Move() et Text()
+    de la graphics.library, sur un fond rose :
+    'YOUR AMIGA IS INFECTED BY'
+    'A NEW GENERATION OF VIRUS'
+      'CREATED IN SWEDEN BY'
+         'MICROSYSTEMS'
+    (texte visible sur le boot).
+  + Ne s'occupe que des lecteurs 0 et 1 pour l'infection des disquettes.
+  + Se reconnait grâce à sa checksum sur disquette.
+
+ - Scarface virus
+
+  + Détourne 148(execbase), BeginIO, utilise KickTagPtr.
+  + Compteur reproduction à l'offset $10 (1 word).
+  + Fait un reset au bout de 2 mn 40s.
+ 
+ - Turk virus
+
+  + S'efface de la mémoire en produisant un effet de couleur si l'on presse
+    simultanément les 2 boutons de la souris et la touche curseur bas au
+    moment du boot, si le virus se trouve sur la disquette.
+  + Se recopie à $7f000, utilise Coolcapture, détourne DoIO.
+  + Au boot de 5 reset il passe à l'action : il formatte les 40 premières
+    pistes de la disquette affiche le texte suivant l'aide de DisplayAlert() :
+    ' Amiga failure... Cause: TURK VIRUS Version 1.3!'
+    et si le hasard n'est pas avec il plantera la machine en effaçant le
+    pointeur sur execbase à l'adresse $4.
+ 
+ - Warhawk virus (voir répertoire Hints)
+
+  + Se recopie à $7e600, utilise CoolCapture, détourne DoIO.
+  + Au bout de 4 reproduction il se manifeste par une petite animation :
+    un rectangle qui s'aggrandi et se rétréci rempli avec une animation de
+    dégradés copper sur lequel défile le texte suivant en fonts 'topaz' :
+    'WARHAWK SAYS : KILLING YOUR DISKS WITH OUR VIRUS IS A WONDERFUL THING !'
+    'CONTACT : UCS, PLK 00257-A, 3457 STADTOLDENDORF ! HEY BAD ! FUCK OFF'
+  + Malgré le texte précédent le virus n'efface que le bootblock en se
+    reproduisant.
+
+
+ II - LES LINK-VIRUS (Ils sont sous forme de fichiers).
+
+ - Timebomb system.
+
+   + C'est un fichier qui est sauve sous le nom '.info' dans le
+     répertoire C par un utilitaire.
+   + Il possède un compteur : le fichier 'pic.xx'. Lorsque ce compteur
+     est nul le 'virus' entre en action.
+   + Affiche 'RAM CHECKED - NO VIRUS FOUND' lorsque le compteur est
+     différent de zéro, et 'User Request : Please remove write
+     protection and press left mouse button to continue..' lorsque
+     qu'il ne peut pas incrémenter son compteur à cause de la
+     protection écriture.
+   + Lorsque que le compteur est nul le TIMEBOMB efface la disquette
+     du secteur 0 a 1661. Comme il y a 1760 sur une disquette, il ne
+     reste plus grand chose. DiskSalv est inutile car la disquette est
+     quasiment formattée.
+     Enfin, il affiche 'Hey Looser ! I hate you ! ', puis plante
+     l'amiga avec ILLEGAL.
+
+ - IRQ virus.
+
+   + C'est le seul vrai link-virus, c'est-à-dire qu'il s'accroche au
+     fichier : Il modifie les hunks du fichier pour s'y 'coller'.
+   + Il se code (partiellement) à l'aide d'un nombre au hasard.
+   + Détourne la OldOpenLibrary, ce qui lui permettra de s'exécuter.
+   + N'utilise pas (efficacement) de vecteurs résidents.
+   + Affiche le texte 'AmigaDos presents: a new virus by IRQ-team
+     V41.0' à la place du titre 'AmigaDOS' de la fenêtre du CLI.
+   + Un caractere 'tab' au début de la startup empêche la
+     contamination. Détourner l'entrée de la OldOpenLibrary en RAM
+     également (c'est le critère d'implantation mémoire pour le
+     virus : il se croira déjà actif).
+   + Ne fait rien de méchant, si ce n'est occuper de la place sur la
+     disquette ...
+
+ - BGS9 (TTV1) virus.
+
+   + Sa taille est de 2608 octets (Facile à repérer).
+   + Utilise le KickTagPtr.
+   + Se loge à la place du premier fichier de la startup-sequence.
+   + Se code à l'aide d'un nombre fixe.
+   + Voila comment il s'installe :
+     Actif en mémoire il cherche le premier fichier de la startup
+     sequence (supposons que se soit LoadWb). Il recopie ce fichier
+     dans le répertoire DEVS sous un nom 'invisible' (le nom est :
+     $a0a0a0202020a0202020a0) et sauvegarde dans un coin l'ancien nom
+     de ce fichier. Le BGS9 prend ensuite le nom de ce fichier (LoadWb).
+     Lors de l'exécution de la startup-sequence le virus est activé,
+     fait son petit ménage, puis exécute le fichier detourné qui
+     se trouve dans DEVS (LoadWb). Il est ainsi totalement transparent.
+     Résumons-nous:
+     Si vous avez le premier fichier de la startup qui fait 2608 octets,
+     et un fichier invisible dans DEVS, vous savez à quoi vous avez à
+     faire ...
+   + Apres 4 copies il affiche une image sur le CLI (en détournant la
+     copperlist). Cette image dit à l'aide de caractères blancs sur un
+     fond noir:
+     '    A COMPUTER VIRUS IS A DISEASE
+          TERRORISM IS A TRANSGRESSION
+           SOFTWARE PICARY IS A CRIME
+               THIS IS THE CURE
+        BGS9 BUNDERSGRENZSCHUTZ SEKTION 9
+             SONDERKOMMANDO 'EDV'  '.
+     Cette image disparait au bout de 30s et 23 centièmes ($600 VBL).
+     Elle est crunchée a l'aide du byte killer et se trouve à l'offset
+     $5ec.
+   + La copperlist se trouve à l'offset $55c, le compteur de
+     reproduction à $558 (longueur = 1 mot), le texte code à $5c4.
+     Voici un programme pour le décoder:
+                   lea     debut+$5c4,a0
+                   move.l  #$10d,d0
+            loop:  eor.l   #$1afa5869,(a0)+
+                   dbra    d0,loop
+
+ - VirusX 3.30
+
+   + Il parait que virusx 3.30 est un faux virusx destine à effacer les
+     fichiers sur disques durs. Voilà ce qu'il arrive lorsqu'on laisse ses
+     sources en DP !
+
+ - Revenge of the Lamer Exterminator virus (voir répertoire Hints)
+
+   + Programmation complexe.
+   + Longueur : 4560 octets.
+   + Détourne AvailMem, Kicksumdata, Kicktagptr, la raster interrupt, BeginIO,
+     DoIO, OpenWindow (Intuition), CloseDevice.
+   + Le virus est codé par une clé aléatiore.
+   + S'installe au début de la startup-sequence. Son nom est: $a0a0a0a0a0
+     (Invisible).
+   + Du fait qu'il s'installe sans l'aide de fonction DOS sur le disk, en
+     calculant lui même son Hashcode, etc ..., il est indétectable dans un
+     directory, même avec List.
+   + Il se rend transparent en mémoire en truquant les renseignements donnés
+     par AvailMem : s'il occupe $12c0 octets en ram, il rajoutera $12c0 octets
+     de libres au résultat de la fonction AvailMem.
+   + Une fois activé, il efface irrémédiablement les disks se trouvant dans
+     tous les drives connectés en même temps en moins de 3 secondes.
+     Le virus utilise les registres du lecteur, en utilisant la vitesse du
+     format MFM et le choix du format GCR. Les disquettes ne peuvent donc même
+     pas être lues partiellement avec un éditeur de secteur. Elles peuvent
+     être réutilisées seulement après reformatage.
+   + Utilise la bibliotheque DOS interne et donc des offsets mal documentés.
+   + Utilise des fontions inconnues ou presque : execbase-630 !
+   + Affiche le texte suivant apres l'effaçage des disks et un reset:
+
+     'Revenge Of The LAMER Exterminator'
+     'RED ALERT:'
+     'It has come to my attention that the person using this'
+     'computer is a LAMER. (*)'
+     'We the people, who are responsible for the'
+     'Revenge Of The LAMER Exterminator Virus,'
+     'believe that only intelligent folk are fit to use'
+     'the AMIGA Personal Computer.'
+     'Since you were apparently not smart enough to prevent'
+     'infection of your computer and software by this virus,'
+     '(You should have used a condom),'
+     'we must assume that you are a LAMER (a.k.a. LOSER)'
+     'and therefore we had no alternative but to erase'
+     'your floppy disk(s), in order to get your attention.'
+     '-Press Any Mousebutton-'
+
+     'We are eagerly looking forward to the first Amiga'
+     'magazine that explains the inner workings of this'
+     'brilliant (at least we think so) virus.'
+     'However, we are not very confident, since the'
+     'three versions of the original LAMER Exterminator'
+     'Virus have never really been properly analysed'
+     'in any Amiga magazine.'
+     'We have made this virus a little bit more aggressive'
+     'so that more people will recognize it and hopefully'
+     'will learn something so as to overcome the dreadful'
+     'disease of LAMERism.'
+     'By the way, the A in LAMER is pronounced'
+     'like the A in DAY. (LAMER people do not'
+     'know proper English in our experience)'
+     '-Press Any Mousebutton-'
+
+     'Signed:'
+     'Foundation for the Extermination of LAMERS. (**)'
+     '(*) You can recognize a LAMER or LOSER as someone'
+     'who can only use the Ctrl-Amiga-Amiga keys on his'
+     'Amiga, and might even know how to load X-Copy...'
+     '(**) Due to the primitive and violent nature of some'
+     'LAMERS, we have decided against revealing our real'
+     'identities, so as to prevent unnecessary'
+     'visits to the local hospital on our part!'
+     'Coming soon to a theatre near you:'
+     '*** The LAMER Exterminator - A New Beginning ***'
+     'Rated PG'
+     '-Press Any Mousebutton To Continue Being A LAMER-'
+
+     qui explique le but des createurs du virus.
+
+ - Revenge of the lamer 2 virus
+
+   + C'est le fichier éxécutable qui installe le Return en mémoire et
+     dans le Disk-Validator.
+   + Aussi virulent que son frère le Revenge of... et son cousin le
+     Return of ...
+
+ - Terrorists virus
+
+   + Fichier de 1612 octets.
+   + Nouvelle version du BGS9, y ressemble beaucoup.
+   + Utilise KickTagPtr, se reconnait en ram.
+   + Détourne OpenWindow.
+   + Même moyen d'infection que son petit frère, le BGS9 (voir ci-dessus).
+   + Le nom du fichier détourné est : $a0,"   ",$a0."  ",$a0," ",$a0,$a0
+   + Affiche le texte suivant, ligne par ligne, sous forme d'images
+     apparaissant et disparaisssant progressivement, après avoir infecté un
+     disk:
+     '      THE NAMES HAVE BEEN CHANGED'
+     '       TO PROTECT THE INNOCENT...'
+     'THE TERRORISTS HAVE YOU UNDER CONTROL'
+     '       EVERYTHING IS DESTROYED'
+     '       YOUR SYSTEM IS INFECTED'
+     '  THERE IS NO HOPE FOR BETTER TIMES'
+     '    THE FIRST TERRORIST VIRUS !!!'
+     Cette image n'est pas compactée, mais est codée par modulo.
+   + Contient également la chaine 'TTV1'
+
+ - Disaster-Master V2 virus (voir répertoire Hints)
+
+   + Fichier de 1740 octets
+   + Ne se 'colle' pas à un fichier, il se met juste dans la Startup-Sequence,
+     et se sauve tout seul sur le disk infecté dans le répertoire 'c'.
+   + Le virus code/décode ses data (Offset $510 a $6a4) à l'aide de cette
+     routine:
+           lea     Debut+$510(pc),a0
+           move.l  #$193,d0
+     Loop: eor.b   d0,(a0)+
+           dbf     d0,Loop
+           rts
+   + Se remarque facilement dans la Startup-Sequence : 'cls *'
+   + Efface l'écran comme cls s'il n'est pas suivi du paramètre '*'
+   + Utilise Coldcapture et KickTagPtr, détourne DoIo et OpenWindow.
+   + Il se reconnait en mémoire par le KickTagPtr, et dans la Startup.
+   + Si son compteur de reproduction est un multiple de 20, il affiche 2
+     fenêtres GURU, pontuées d'effets de couleurs :
+     'Software Failure.   Press left mouse button to continue'
+     'Guru Meditation #00000002.06001989'
+     et :
+     'Incoming Special message...'
+     'Your Amiga is infected by DISASTER-MASTER V2 !!!'
+     'probably the best virus ever created by manking....'
+     'Left = continue        Right = self-destruction'
+     Si vous choisissez 'self-destruction' il bloque la machine, ainsi que le
+     reset, avec des effets de couleurs. Il faut éteindre l'Amiga.
+   + le virus modifie la structure Window (le virus détourne OpenWindow) de
+     l'une de ces 4 facons, au hazard :
+     - Efface le nom de la fenêtre
+     - Force la largeur à 320 et la hauteur à 32
+     - Modifie la couleur de fond de la fenêtre
+     - Inverse les flags suivants de la structure fenêtre : MenuState,
+       WindowSizing, WindowDrag, WindowDepth.
+
+ - Xeno virus
+
+   + C'est un vrai link-virus, c'est à dire qui se 'colle' aux fichiers.
+   + Ces victimes ne sont pas obligatiorement des fichiers de la
+     startup-sequence.
+   + Pour trouver des victimes, il détourne les sous routines suivantes de la
+     dos.library : Open, LoadSeg, Lock. Il trouve ainsi le nom du fichier
+     qu'il infectera. Il est donc difficile à repérer sur la disquette.
+   + N'importe quel fichier exécutable peut être infecté !!!
+   + Il ne détourne pas de vecteurs résidents, donc ne résiste pas au reset.
+   + Il ne fait qu'afficher parfois le texte suivant, après l'avoir décodé :
+     'Greetings Amiga user from the Xeno virus!'
+     Voici comment décoder ce texte:
+          lea    Début+$41e(pc),a0
+          moveq  #$29,d0
+     Loop:eor.b  #$80,(a0)+
+          dbra   d0,Loop
+          rts
+   + Ce virus est beaucoup plus discret que les autres, heureusement il n'est
+     pas très méchant, puisqu'il ne fait qu'occuper des octets supplémentaires
+     sur une disquette.
+   + On peut imaginer un virus qui ait la discrétion du Xeno et l'agressivité
+     du Revenge of the lamer. Celui ci serait extrêmement dangereux !!!!
+     Le pire est à venir ....
+
+ - CCCP Virus
+
+   + Détourne l'interruption $6c, DoIO, OpenWindow et OpenLibrary.
+   + Utilise WarmCapture et CoolCapture.
+   + Texte visible à l'offset $54 : 'CCCP VIRUS'.
+   + Choisi un fichier dans le RootBlock en y lisant des secteurs Header.
+     N'aime pas les fichiers commençant par les lettres 'l', 'd' et 'f'.
+   + Se recopie au début d'un fichier éxécutable en modifiant ses hunks pour
+     s'y coller, ou sur le bootblock.
+   + S'active en détournant OpenWindow.
+
+ - Return of the lamer virus (R.O.L.E) (voir répertoire Hints)
+
+   + Troisième génération de virus après les virus sur le bootblock et
+     les virus qui se colle aux fichiers exécutables, cette sorte de virus
+     se loge dans le disk-validator.
+     Le disk-validator est aussi un fichier exécutable mais qui n'est utilisé
+     dans dans certains cas, comme par exemple lorsque la disquette est
+     'dévalidee'. Celà se traduit par l'inversion du flag 'bitmap' qui se
+     trouve à la piste 40, sur le block racine de la disquette concernée.
+   + Ainsi pour s'exécuter le virus doit se trouver sur une disquette dont
+     le flag 'bitmap' aura été inversé. Et le virus sera lancé à chaque
+     insertion de la disquette infectée, même plus besoin de booter, ou de
+     lancer un fichier infecté !!!
+   + Donc pour inhiber le virus il faudra non seulement le tuer dans la
+     mémoire, mais aussi rétablir le flag 'bitmap' pour éviter qu'il ne 
+     recontamine la mémoire à la prochaine insertion de la disquette infectée.
+     Il ne restera plus qui remplacer le virus par un vrai disk-validator.   
+   + Taille : celle du disk-validator donc 1848 octets
+   + Détourne BeginIO() et CloseIO() du Trackdisk.device et BeginIO() du
+     Console.device, Raster Interrupt, AllocAbs(), 
+   + Selon les valeurs de 2 de ses compteurs, il remplira un secteur choisi
+     au hasard avec 64 fois 'LAMER!!!' (effaçant évidemment les données
+     précédentes) ou formatera la disquette de la même façon que le
+     Revenge of the lamer (disquette réutilisable seulement après
+     reformattage).
+   + Utilise KicktagPtr pour résister au reset.
+   + Utilise CopyMem (jsr -630(execbase)!!), les fonctions internes de la
+     Dos.library : tout ceci étant pas ou très peu documenté l'auteur ne doit
+     pas être un amateur.
+   + Se crypte avec un clef qui change à chaque reproduction.
+   
+ - Saddam Hussein virus (SHV)
+
+   + Taille : 1848 octets
+   + Clone du Return of the lamer virus, et beaucoup plus répandu.
+   + Ecrit 'IRAK' au lieu de 'LAMER!!!' sur un secteur pour l'effacer.
+   + Se loge également dans le Disk-Validator etc ... comme le ROLE.
+
+ - The Smily Cancer virus (Centurion) (voir répertoire Hints)
+
+   + Se décode à l'aide de cette routine :
+           LEA     Début+$210(PC),A0
+           MOVE.W  #$D53,D0
+     Loop: MOVE.B  (A0),D1
+           ROR.B   #2,D1
+           MOVE.B  D1,(A0)+
+           DBRA    D0,Loop
+     et se code avec un ROL.B.
+   + C'est un vrai 'link-virus' car il s'accroche aux fichiers.
+   + S'intalle en ram à $7f000, utilise KickTagPtr, puis saute au 1er hunk du
+     fichier infecté.
+   + Reproduction : charge la Startup-Sequence, choisi un fichier, calcul son
+     Hashcode, lit le secteur correspondant dans le RootBlock et s'intercale
+     au début de ce fichier. Occupe 32 secteurs sur la disquette en les
+     allouant directement dans le bitmap de la disquette.
+   + Dévie KickSumData, BeginIO.
+   + Se manifeste en changeant le pointeur de la souris en un petit smiley
+     avec un chapeau melon sous lequel défile le texte suivant :
+     "????????       HI THERE    A NEW AGE IN VIRUS MAKING HAS BEGUN!!!"
+     "THANX TO US... THANX TO: --- CENTURION --- AND WE HAVE THE PLEASURE TO"
+     "INFORM YOU THAT SOME OF YOUR DISKS ARE INFECTED BY OUR FIRST"
+     "MASTERPIECE CALLED: ' THE SMILY CANCER '   HAVE FUN LOOKING FOR IT..."
+     " AND STAY TUNED FOR OUR NEXT PRODUCTIONS.   "
+     "CENTURIONS: THE FUTURE IS NEAR!"
+
+ - Eugenie virus (voir répertoire Hints)
+
+   + Taille : 8764 octets
+   + Détourne OldOpenLibrary(), utilise Kicktagptr
+   + Choisi le fichier à infecter dans la Startup Sequence.
+     Abandonne sa recherche si la startup commence par ';EUG' : c'est sans
+     doute un vaccin prévu par l'auteur. N'infecte pas les fichier de plus
+     de 100000 octets.
+   + Il se manifeste en jouant un rire digitalisé.
+
+ - Bret Hawnes virus (voir répertoire Hints)
+
+   + Taille : 2608 octets
+   + S'installe à $7f000 en mémoire, efface coolcapture.
+   + Utilise KicktagPtr et Doio (et une structure IoRequest propre).
+   + Détourne OpenLibrary(), OpenWindow().
+   + Le virus s'installe au début de la startup-sequence avec ce nom :
+     $c0a0e0a0c0. Se reconnait dans la startup (moyen d'un vaccin!).
+     Cela ne sert à rien d'utiliser la commande Protect, il remet la
+     protection de la startup à RWED.
+   + Ce n'est pas un vrai link virus, il ne s'accroche à aucun fichier.
+   + Au bout de 10 reproduction, il passe à l'action :
+     formatte de la piste 35 à 45 (endroit du boot racine, bitmap et des
+     secteurs header, et la 1ère piste de la disquette, puis affiche une
+     image, et bloque la machine par une boucle sans fin ($3e2 Bra $3e2).
+   + Image à l'offset $3e6, copperlist à l'offset $7f6.
+   + Texte visible à l'offset $9b6 :
+     "U LIKE MY FIRST LINKVIRUS +    DONE BY BRET HAWNES 210190"
+   + Texte affiché par l'image :
+     "GUESS WHO'S BACK ??? YEP. BRET HAWNES BLOPS YOUR SCREEN"
+           "I'VE TAKEN THE CONTROLL OVER YOUR AMIGA!!!"
+      "THERE'S ONLY ONE CURE: POWER OFF AND REBOOT ! ! ! ! !"
+
+ - Butonic 1.31 (voir répertoire Hints)
+
+   + Taille : 3408 octets
+   + Efface son nom lors d'un 'List' grâce à une jusdicieuse séquence de
+     caractères dans son commentaire.
+   En désassemblage ...
+ 
+ - Butonic 3.00 (voir répertoire Hints)
+
+   + Taille : 2916 octets
+   En désassemblage ...
+
+
+ III - AUTRES VIRUS CONNUS
+
+     Voici les autres virus, donc manquants à UVK (vous savez quoi faire) :
+
+     + BootBlocks:
+       AIDS, Gyros, Paramout, Australian Parasite, CList, Nohead, FAST,
+       Suntronic, Ultrakill, AmigaFreak, Butonic's 1.1, JITR, Destructor,
+       FastLoadByte, MGM, 2001 (SCA), Amiga Freak (FORPIB), Blackflash,
+       Bladerunner (SCA), Blowjob, Byte Voyager1, Byte Voyager2, Hoden,
+       Destructor, Digital Emotion, Butonic 1.1, FAST, FICA, Inger HQ,
+       LADS, Paradox, Mad, Megamaster, Mexx, Morbid Angel, Paratax,
+       Powerbomb, Saddam Hussein (boot virus), The traveller, Vermin,
+       Warshaw avenger.
+     + Fichiers:
+       Xeno2, Travelling Jack 1&2, EM-Wurm, TimeBomber, BGS92, IRQ2.
+
+     Voilà ça fait 50 virus bootblock et 17 link-virus.
+ 
+                                                                 Amiguy.
+
+
